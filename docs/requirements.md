@@ -1,8 +1,8 @@
-# Pebble Time 2 ChatGPT Voice Q&A PoC 要件定義・実現可能性調査
+# Pebble Time 2 BYOK AI Voice Q&A PoC 要件定義・実現可能性調査
 
 ## 1. 背景と目的
 
-Pebble Time 2 で音声入力を行い、ChatGPT 相当の AI 回答を短文で時計に表示する自分用 PoC を開発する。まずは Pebble 上で「話す、送る、読む」までの体験を成立させ、実装前に認証方式、Pebble 側の音声入出力、スマホ経由通信の実現可能性を明確にする。
+Pebble Time 2 で音声入力を行い、Gemini / Groq / OpenAI などの AI 回答を短文で時計に表示する PoC を開発する。まずは Pebble と Android phone だけで「話す、送る、読む」までの体験を成立させ、backend を持たない BYOK (Bring Your Own Key) 方式で実装可能性を確認する。
 
 この文書の対象は要件定義と調査結果の整理までとし、watchapp、backend、Android companion の実装は含めない。
 
@@ -12,15 +12,19 @@ Pebble Time 2 で音声入力を行い、ChatGPT 相当の AI 回答を短文で
 
 - 対象デバイス: Pebble Time 2
 - スマホ環境: Android 優先
-- 配布範囲: 自分用 PoC
+- 配布範囲: 自分用 PoC から小規模 BYOK 配布まで
 - 入力言語: 日本語中心
 - 回答言語: 日本語中心
+- 認証方式: BYOK 方式を第一候補とし、ユーザーが Pebble app の設定画面で自分の API key を入力する。
+- 第一 provider 候補: Gemini API
+- 差し替え provider 候補: Groq API、OpenAI API、OpenClaw/OpenCode bridge
 
 ### 2.2 ユーザー体験
 
 - Pebble watchapp 上で音声入力を開始できる。
 - Pebble の `Dictation` API で音声をテキスト化する。
-- テキスト化された質問をスマホ経由で backend に送信する。
+- テキスト化された質問を `AppMessage` で PebbleKit JS に渡す。
+- PebbleKit JS が Android phone 上で AI provider API を直接呼び出す。
 - AI 回答を Pebble 画面向けの短文要約として表示する。
 - 会話文脈は直近数往復のみ保持する。
 - Dictation 完了後、回答表示までの目標は 15 秒以内とする。
@@ -30,56 +34,61 @@ Pebble Time 2 で音声入力を行い、ChatGPT 相当の AI 回答を短文で
 - Pebble からの生音声録音、または raw audio の直接送信
 - 長文回答の全文スクロール表示
 - iOS 優先対応
-- 一般公開、ストア配布、知人向け beta 配布
+- 不特定多数向け一般公開
 - Android native companion app の実装
+- Cloudflare Workers / PC backend の必須化
 - AI 回答の TTS 音声再生
 
 ## 3. 技術構成
 
 ### 3.1 想定アーキテクチャ
 
-MVP の実機 PoC は次の構成を第一候補とする。
+MVP の実機 PoC は、backend を使わず Pebble と Android phone で完結する BYOK 構成を第一候補とする。
 
 ```text
 Pebble watchapp
   -> AppMessage
   -> PebbleKit JS on Android phone
-  -> HTTPS via Tailscale Funnel
-  -> local backend on PC
-  -> AI/OAuth layer
+  -> AI provider HTTPS API
+     - Gemini API
+     - Groq API
+     - OpenAI API
 ```
 
-この構成では、Pebble watchapp は音声入力と結果表示に集中し、PebbleKit JS がスマホ側の通信ブリッジになる。API key や OAuth token などの秘密情報は Pebble watchapp や PebbleKit JS に置かず、local backend 側で扱う。
+この構成では、Pebble watchapp は音声入力と結果表示に集中し、PebbleKit JS がスマホ側の通信ブリッジ兼 AI provider client になる。API key は Pebble app の設定画面でユーザーが入力し、PebbleKit JS 側の保存領域に保持する。watchapp 本体には API key を渡さない。
 
-### 3.2 最小 API
+### 3.2 設定画面
 
-#### `GET /health`
+Pebble app の設定画面で、次の項目を入力・保存できるようにする。
 
-backend の疎通確認用 endpoint。
+- provider: `gemini` / `groq` / `openai`
+- API key
+- model
+- max output tokens
+- memory depth
+- system instruction または回答スタイル
+- API key 削除ボタン
 
-想定 response:
+設定画面は Pebble の `configurable` capability と PebbleKit JS の configuration page で実装する。設定UIは Clay を第一候補とし、外部hostingなしで PBW に同梱できる形を優先する。
 
-```json
-{
-  "status": "ok"
-}
-```
+API key はユーザー自身のものを使う。アプリ開発者の共通 API key を PebbleKit JS に埋め込むことは禁止する。
 
-#### `POST /v1/voice-query`
+### 3.3 PebbleKit JS 内部インターフェース
 
-Pebble から送られた音声認識後テキストを AI に問い合わせ、時計表示向けの短文回答を返す endpoint。
+PebbleKit JS は、watchapp から受け取った音声認識後テキストを provider 別の adapter に渡す。
 
-想定 request:
+想定 input:
 
 ```json
 {
   "utterance": "今日の予定を短く整理して",
   "locale": "ja-JP",
-  "conversationId": "optional-conversation-id"
+  "conversationId": "optional-conversation-id",
+  "recentMessages": []
 }
 ```
 
-想定 response:
+想定 output:
 
 ```json
 {
@@ -89,7 +98,7 @@ Pebble から送られた音声認識後テキストを AI に問い合わせ、
 }
 ```
 
-エラー時の想定 response:
+エラー時は provider の詳細エラーをそのまま時計に出さず、短い表示用メッセージへ丸める。
 
 ```json
 {
@@ -99,39 +108,54 @@ Pebble から送られた音声認識後テキストを AI に問い合わせ、
 }
 ```
 
-#### `GET /auth/start`
+### 3.4 backend 拡張案
 
-ChatGPT サブスク OAuth 可否調査用の認証開始 endpoint。公式方式で成立するか、または成立しないかを検証するために使う。
+BYOK 方式で体験検証ができた後、必要に応じて Cloudflare Workers または local backend を追加する。
 
-#### `GET /auth/callback`
+```text
+Pebble watchapp
+  -> AppMessage
+  -> PebbleKit JS on Android phone
+  -> Cloudflare Worker or local backend
+  -> AI provider API
+```
 
-OAuth callback 調査用 endpoint。認可コード、エラー、state 検証結果などを受ける。秘密情報や token はログに出さない。
+backend 方式は、API key を Workers Secrets や server-side env に置きたい場合、rate limit や利用量監視を入れたい場合、複数ユーザーへ安全に配布したい場合に検討する。完全に自分向けなら Workers Secrets に自分の API key を置く方式も可能だが、他ユーザーの利用分も自分の quota / 課金になる。
 
 ## 4. 認証方針
 
-### 4.1 第一優先の調査項目
+### 4.1 MVP の認証方式: BYOK
 
-最初に、ChatGPT サブスクプランを外部 Pebble アプリから OAuth で直接利用できる公式手段があるかを調査する。
+MVP は BYOK 方式を採用する。ユーザーは Pebble app の設定画面で自分の Gemini / Groq / OpenAI API key を入力し、PebbleKit JS がその key を使って provider API を呼び出す。
 
-現時点の公式情報ベースでは、OpenAI API は API key 認証を前提としており、ChatGPT のサブスク課金と API platform の課金は別体系である。そのため、ChatGPT Plus/Pro 等のサブスク枠を外部アプリから OAuth で直接消費する方式は、少なくとも公式に一般提供されている方式としては確認できていない。
+BYOK 方式は、backend 不要で Pebble + Android phone だけで完結でき、既存の Pebble AI app とも近い設計である。一方で、API key はスマホ側保存になるため、完全な秘密としては扱わない。
 
-### 4.2 fallback
+### 4.2 BYOK の安全要件
 
-公式 OAuth 方式が成立しない場合は、OpenAI API backend 方式を fallback とする。
+- API key は watchapp 本体へ送信しない。
+- API key は source code、PBW package、GitHub repo に含めない。
+- 設定画面に API key 削除ボタンを用意する。
+- API key の表示は mask する。
+- ユーザーに、provider 側で専用 key を作り、必要に応じて revoke できるよう案内する。
+- 開発者共通 API key を client-side code に埋め込まない。
+- 小規模配布時は、利用料金、漏洩、rate limit、revoke の責任範囲を明記する。
 
-OpenAI API backend 方式では、OpenAI API key を local backend または将来の cloud backend に置き、Pebble watchapp と PebbleKit JS は自前 backend のみを呼び出す。これにより、API key を client-side code に露出しない構成にする。
+### 4.3 provider 方針
 
-### 4.3 非公式方式の扱い
+第一 provider は Gemini API とする。理由は、無料枠があり、PoC の初期検証に向くためである。
 
-非公式方式は、自分用 PoC のリスク評価対象としてのみ扱う。要件定義では次の観点を評価するが、具体的な回避手順やリバースエンジニアリング手順は文書化しない。
+provider adapter は差し替え可能な形にし、次を候補にする。
 
-- OpenAI または ChatGPT の利用規約・ポリシー上のリスク
-- アカウント停止や認証失効のリスク
-- 仕様変更への弱さ
-- token や cookie の保護難度
-- 一般公開や beta 配布に耐えない可能性
+- Gemini API: 第一候補。無料枠、日本語、将来の TTS 検証を期待する。
+- Groq API: 高速応答候補。日本語TTSは別途検証する。
+- OpenAI API: 安定した公式API候補。API課金前提。
+- OpenClaw/OpenCode bridge: ChatGPT/Codex サブスク活用候補。自分用PoC向けの別ルートとして扱う。
 
-一般公開、知人向け beta、長期運用を前提にする場合、非公式方式は採用しない。
+### 4.4 ChatGPT OAuth / 非公式方式の扱い
+
+ChatGPT サブスクプランを外部 Pebble アプリから OAuth で直接利用する方式は、MVP の本命から外す。
+
+OpenClaw/OpenCode bridge のような ChatGPT/Codex サブスク活用ルートは、自分用 PoC の追加検証候補として扱う。ただし、一般公開や小規模配布の前提にはしない。非公式方式の具体的な回避手順やリバースエンジニアリング手順は文書化しない。
 
 ## 5. Pebble 機能の実現可能性
 
@@ -178,20 +202,38 @@ TTS/PCM 再生を v2 に回す理由:
 | --- | --- | --- |
 | Pebble で音声入力する | 可能 | `Dictation` API が利用できる。MVP は text input として扱う。 |
 | Pebble からスマホへ送る | 可能 | `AppMessage` で watchapp と phone side の双方向通信ができる。 |
-| スマホから backend へ送る | 可能 | PebbleKit JS は HTTP request を扱える。 |
-| PC backend を外部公開する | 可能 | Tailscale Funnel で local service を HTTPS 公開できる。 |
-| OpenAI API を使う | 可能 | API key を backend に置けば実装できる。 |
-| ChatGPT サブスクを外部アプリから OAuth 利用する | 低い / 要調査 | 公式情報では ChatGPT と API platform は別課金で、外部アプリ向けのサブスクOAuth消費方式は確認できていない。 |
+| スマホから AI provider API へ送る | 可能 | PebbleKit JS は HTTP request を扱える。 |
+| BYOK 設定画面を作る | 可能 | Pebble app configuration / Clay で設定画面を作れる。 |
+| Gemini API を使う | 可能 | ユーザーの API key を設定画面で受け取り、PebbleKit JS から呼ぶ。 |
+| Groq / OpenAI API を使う | 可能 | provider adapter を分ければ差し替えられる。 |
+| Cloudflare Workers backend を使う | 可能 / 拡張案 | API key を Secrets に置けるが、開発者keyの quota / 課金になる。 |
+| ChatGPT サブスクを外部アプリから OAuth 利用する | MVP外 | 一般公開向けの公式 OAuth API としては採用しない。OpenClaw/OpenCode bridge は自分用追加検証候補。 |
 | Pebble で通知音を鳴らす | 可能性あり | `Speaker` API があるため、短い tone から検証する。 |
 | Pebble で AI 回答を音声再生する | v2 調査 | PCM streaming、転送量、電力、品質の実機検証が必要。 |
 
-## 7. 未決定事項
+## 7. 既存アプリ・競合認識
+
+Pebble / RePebble ecosystem には、すでに近いカテゴリのアプリがある。
+
+- hb MabelAI: Pebble Dictation で音声入力し、Claude / Gemini / ChatGPT を API key 設定で使う AI assistant。Time 2 対応表記あり。
+- Bobby: Rebble の LLM voice assistant。Gemini technology を使い、質問回答、timer、reminder、天気などを提供する。
+
+そのため、本 PoC の新規性は「音声AIアシスタントそのもの」ではなく、次に置く。
+
+- Pebble Time 2 / Android の現在環境で自分が改造しやすい最小構成を作る。
+- 日本語短文回答に最適化する。
+- Gemini 無料枠を第一候補にする。
+- BYOK 方式を明確にし、backendなしで完結させる。
+- 将来、speaker/TTS や OpenClaw/OpenCode bridge を追加検証できる設計にする。
+
+## 8. 未決定事項
 
 実装に進む前に、次の 3 点を優先して検証する。
 
-1. ChatGPT OAuth 可否
-   - ChatGPT サブスクを外部 Pebble アプリから公式に OAuth 利用できるか。
-   - 成立しない場合、OpenAI API backend 方式へ切り替える。
+1. BYOK 設定保存と provider 呼び出し
+   - Pebble app 設定画面で API key を入力・保存できるか。
+   - PebbleKit JS から Gemini API を直接呼べるか。
+   - provider API の CORS / HTTP header / response parsing が PebbleKit JS 上で問題ないか。
 
 2. Speaker/TTS 可否
    - `Speaker` API で短い tone が再生できるか。
@@ -200,37 +242,45 @@ TTS/PCM 再生を v2 に回す理由:
 
 3. PebbleKit JS 実機通信確認
    - Dictation 結果を AppMessage で PebbleKit JS に渡せるか。
-   - PebbleKit JS から Tailscale Funnel 経由の backend に HTTP request できるか。
-   - backend response を Pebble watchapp に返せるか。
+   - PebbleKit JS から AI provider API に HTTP request できるか。
+   - provider response を Pebble watchapp に返せるか。
 
-## 8. テスト計画
+## 9. テスト計画
 
-### 8.1 ドキュメント確認
+### 9.1 ドキュメント確認
 
 - `docs/requirements.md` が存在する。
-- MVP 要件、アーキテクチャ、認証リスク、speaker の扱い、テスト計画、参照 URL が含まれている。
-- 未決定事項が「ChatGPT OAuth 可否」「Speaker/TTS 可否」「PebbleKit JS 実機通信確認」の 3 点に整理されている。
+- MVP 要件、BYOK アーキテクチャ、認証リスク、speaker の扱い、テスト計画、参照 URL が含まれている。
+- 未決定事項が「BYOK 設定保存と provider 呼び出し」「Speaker/TTS 可否」「PebbleKit JS 実機通信確認」の 3 点に整理されている。
 
-### 8.2 PoC 実装時の受け入れテスト
+### 9.2 PoC 実装時の受け入れテスト
 
 - Pebble Dictation で日本語テキストが取得できる。
 - Pebble から `AppMessage` で PebbleKit JS へテキストを送れる。
-- PebbleKit JS から backend へ HTTP request を送れる。
-- backend から短文回答を返し、Pebble に表示できる。
+- Pebble app の設定画面で provider と API key を保存できる。
+- PebbleKit JS から Gemini API へ HTTP request を送れる。
+- provider から短文回答を返し、Pebble に表示できる。
 - Dictation 完了後 15 秒以内に回答が表示される主要ケースがある。
-- Bluetooth 切断、ネットワーク失敗、Dictation 失敗、AI 応答失敗を短いエラー表示で処理できる。
+- Bluetooth 切断、ネットワーク失敗、Dictation 失敗、API key 未設定、provider 応答失敗を短いエラー表示で処理できる。
 - 直近文脈ありで 2 往復の Q&A が成立する。
 - `Speaker` API で短い tone を再生できる。
 
-## 9. 参照資料
+## 10. 参照資料
 
 - Pebble Dictation API: https://developer.repebble.com/guides/events-and-services/dictation/
 - Pebble AppMessage: https://developer.repebble.com/docs/c/Foundation/AppMessage/
 - PebbleKit JS: https://developer.repebble.com/docs/pebblekit-js/
+- Pebble App Configuration: https://developer.repebble.com/guides/user-interfaces/app-configuration-static/
+- Clay configuration framework: https://github.com/pebble/clay
 - Pebble Time 2 hardware: https://docs.zephyrproject.org/latest/boards/coredevices/pt2/doc/index.html
 - Pebble Speaker API: https://developer.repebble.com/guides/events-and-services/speaker/
 - OpenAI API authentication: https://platform.openai.com/docs/api-reference/authentication/api-keys
 - ChatGPT/API billing separation: https://help.openai.com/en/articles/9039756-managing-billing-settings-on-chatgpt-web-and-platform
 - ChatGPT subscription vs API: https://help.openai.com/en/articles/8156019-how-can-i-move-my-chatgpt-subscription-to-the-api
 - GPT Actions OAuth: https://platform.openai.com/docs/actions/authentication
-- Tailscale Funnel: https://tailscale.com/docs/features/tailscale-funnel
+- Groq API Reference: https://console.groq.com/docs/api-reference
+- Gemini API Pricing: https://ai.google.dev/gemini-api/docs/pricing
+- Cloudflare Workers Secrets: https://developers.cloudflare.com/workers/configuration/secrets/
+- Cloudflare Workers Limits: https://developers.cloudflare.com/workers/platform/limits/
+- hb MabelAI: https://apps.repebble.com/hb-mabelai_699d02835f9b050009af836b
+- Bobby: https://bobby.rebble.io/
