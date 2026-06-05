@@ -1,6 +1,6 @@
-# Pebble GPT MVP UI / Functional Specification
+# Ask Pebbpe MVP UI / Functional Specification
 
-This document captures the decided MVP UI and functional behavior for the Pebble GPT PoC.
+This document captures the decided MVP UI and functional behavior for the Ask Pebbpe PoC.
 
 The original feasibility and requirements notes remain in `docs/requirements.md`. This file is the implementation-facing specification produced from follow-up product decisions.
 
@@ -43,7 +43,7 @@ OpenRouter requests include:
 
 - `Authorization: Bearer <OpenRouter API key>`
 - `Content-Type: application/json`
-- `X-OpenRouter-Title: Pebble GPT`
+- `X-OpenRouter-Title: Ask Pebbpe`
 
 `HTTP-Referer` and `X-Title` are not required for MVP unless a stable app/site URL exists later.
 
