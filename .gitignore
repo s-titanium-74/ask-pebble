@@ -1,1 +1,4 @@
-.git-real/
+.build/
+build/
+.lock-waf*
+*.pbw

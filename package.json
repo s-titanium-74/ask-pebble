@@ -1,0 +1,46 @@
+{
+  "name": "ask-pebbpe",
+  "author": "Your Name",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Ask Pebbpe",
+    "uuid": "0050cb35-633f-4301-992e-4a558462f29f",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "capabilities": [
+      "configurable",
+      "microphone"
+    ],
+    "messageKeys": {
+      "type": 1,
+      "requestId": 2,
+      "utterance": 3,
+      "status": 4,
+      "answer": 5,
+      "errorCode": 6,
+      "message": 7,
+      "hasApiKey": 8
+    },
+    "resources": {
+      "media": [
+        {
+          "type": "raw",
+          "name": "CONFIG_PAGE",
+          "file": "config.html"
+        }
+      ]
+    }
+  }
+}
