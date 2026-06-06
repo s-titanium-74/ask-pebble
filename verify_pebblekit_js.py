@@ -119,7 +119,7 @@ class MockPebbleKitJS:
         # Conversation memory
         memory_depth = int(settings.get('memoryDepth', 2))
         max_messages = memory_depth * 2
-        recent_messages = self.conversationMemory[-max_messages:]
+        recent_messages = self.conversationMemory[-max_messages:] if max_messages > 0 else []
         messages.extend(recent_messages)
         
         # User message
@@ -148,6 +148,10 @@ class MockPebbleKitJS:
         settings = self.getSettings()
         memory_depth = int(settings.get('memoryDepth', 2))
         max_messages = memory_depth * 2
+
+        if max_messages == 0:
+            self.conversationMemory = []
+            return
         
         self.conversationMemory.append({'role': 'user', 'content': utterance})
         self.conversationMemory.append({'role': 'assistant', 'content': answer})
@@ -161,6 +165,8 @@ class MockPebbleKitJS:
         if status == 401 or status == 403:
             return 'auth_failed'
         if status == 429:
+            return 'rate_limited'
+        if status == 402:
             return 'rate_limited'
         if status == 400:
             if 'model' in error_message.lower():
@@ -345,6 +351,29 @@ def test_conversation_memory():
     print("  [PASS] Conversation memory managed correctly")
 
 
+def test_conversation_memory_disabled():
+    """会話メモリ無効化のテスト"""
+    print("\n--- Test: Conversation Memory Disabled ---")
+
+    pkjs = MockPebbleKitJS('test-key')
+    settings = pkjs.getSettings()
+    settings['memoryDepth'] = '0'
+    pkjs.localStorage.setItem('ask_pebbpe_settings', json.dumps(settings))
+
+    pkjs.conversationMemory = [
+        {'role': 'user', 'content': 'Old question'},
+        {'role': 'assistant', 'content': 'Old answer'}
+    ]
+    messages = pkjs.buildMessages('New question', pkjs.getSettings())
+    assert len(messages) == 2, "Should include only system and current user message"
+    assert messages[1]['content'] == 'New question', "Should not include previous memory"
+
+    pkjs.addToMemory('New question', 'New answer')
+    assert len(pkjs.conversationMemory) == 0, "Should not store memory when depth is 0"
+
+    print("  [PASS] Conversation memory can be disabled")
+
+
 def test_truncate_answer():
     """回答短縮のテスト"""
     print("\n--- Test: Answer Truncation ---")
@@ -432,6 +461,7 @@ def main():
     test_settings_management()
     test_system_instruction()
     test_conversation_memory()
+    test_conversation_memory_disabled()
     test_truncate_answer()
     
     # エラーハンドリングテスト

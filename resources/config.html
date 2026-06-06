@@ -198,29 +198,40 @@
       section.classList.toggle('visible');
     }
     
+    var apiKeyDeletedFlag = false;
+    var memoryResetFlag = false;
+
     function deleteApiKey() {
       if (confirm('Delete your OpenRouter API key and conversation memory?')) {
+        apiKeyDeletedFlag = true;
+        memoryResetFlag = true;
         document.getElementById('apiKey').value = '';
         document.getElementById('apiKeyStatus').style.display = 'none';
-        // Note: actual deletion happens on save
       }
     }
     
     function resetMemory() {
-      // Just a UI action; actual reset happens on PebbleKit JS side
+      memoryResetFlag = true;
       alert('Memory reset');
     }
     
     function save() {
+      var resetFlag = memoryResetFlag;
+      memoryResetFlag = false;
+      var apiKeyValue = document.getElementById('apiKey').value.trim();
+      var deleteFlag = apiKeyDeletedFlag && !apiKeyValue;
+      apiKeyDeletedFlag = false;
       var newSettings = {
-        apiKey: document.getElementById('apiKey').value.trim(),
+        apiKey: apiKeyValue,
+        apiKeyDeleted: deleteFlag,
         language: document.getElementById('language').value,
         model: document.getElementById('model').value,
         customModelId: document.getElementById('customModelId').value.trim(),
         systemInstruction: document.getElementById('systemInstruction').value.trim(),
         maxOutputTokens: document.getElementById('maxOutputTokens').value,
         memoryDepth: document.getElementById('memoryDepth').value,
-        timeoutSeconds: document.getElementById('timeoutSeconds').value
+        timeoutSeconds: document.getElementById('timeoutSeconds').value,
+        memoryReset: resetFlag
       };
       
       // Return to Pebble app

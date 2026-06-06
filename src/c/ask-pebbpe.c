@@ -111,7 +111,6 @@ static void set_state(AppState state) {
   AppState prev_state = s_current_state;
 
   s_current_state = state;
-  s_last_error_code = ERR_NONE;
   layer_mark_dirty(s_bg_layer);
 
   if (prev_state == STATE_ANSWER && state != STATE_ANSWER) {

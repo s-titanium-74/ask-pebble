@@ -36,17 +36,15 @@ Pebble.addEventListener('webviewclosed', function(e) {
     var newSettings = JSON.parse(decodeURIComponent(e.response));
     var oldSettings = config.getSettings();
     
-    // Preserve existing API key if user cleared the input
-    if (!newSettings.apiKey && oldSettings.apiKey) {
+    if (newSettings.apiKeyDeleted) {
+      newSettings.apiKey = '';
+      conversationMemory = [];
+    } else if (!newSettings.apiKey && oldSettings.apiKey) {
+      // Preserve existing API key if the masked input was left blank.
       newSettings.apiKey = oldSettings.apiKey;
     }
     
     config.saveSettings(newSettings);
-    
-    // API key explicitly deleted: clear conversation memory
-    if (oldSettings.apiKey && !newSettings.apiKey) {
-      conversationMemory = [];
-    }
     
     // Memory reset requested
     if (newSettings.memoryReset) {
@@ -89,7 +87,7 @@ function handleAsk(requestId, utterance) {
     
     if (error) {
       var errorCode = mapOpenRouterError(error);
-      sendError(requestId, errorCode, error.message);
+      sendError(requestId, errorCode, displayMessageForError(errorCode));
       return;
     }
     
@@ -123,8 +121,9 @@ function buildMessages(utterance, settings) {
   });
   
   // Conversation memory
-  var memoryDepth = parseInt(settings.memoryDepth) || 2;
-  var recentMessages = conversationMemory.slice(-memoryDepth * 2);
+  var memoryDepth = getMemoryDepth(settings);
+  var maxMessages = memoryDepth * 2;
+  var recentMessages = maxMessages > 0 ? conversationMemory.slice(-maxMessages) : [];
   recentMessages.forEach(function(msg) {
     messages.push(msg);
   });
@@ -160,8 +159,13 @@ function buildSystemInstruction(settings) {
 }
 
 function addToMemory(utterance, answer) {
-  var memoryDepth = parseInt(config.getSettings().memoryDepth) || 2;
+  var memoryDepth = getMemoryDepth(config.getSettings());
   var maxMessages = memoryDepth * 2;
+
+  if (maxMessages === 0) {
+    conversationMemory = [];
+    return;
+  }
   
   conversationMemory.push({
     role: 'user',
@@ -176,6 +180,14 @@ function addToMemory(utterance, answer) {
   if (conversationMemory.length > maxMessages) {
     conversationMemory = conversationMemory.slice(-maxMessages);
   }
+}
+
+function getMemoryDepth(settings) {
+  var memoryDepth = parseInt(settings.memoryDepth);
+  if (isNaN(memoryDepth)) {
+    return 2;
+  }
+  return Math.max(0, memoryDepth);
 }
 
 function truncateAnswer(answer, maxChars, maxBytes) {
@@ -211,6 +223,9 @@ function mapOpenRouterError(error) {
   if (error.status === 429) {
     return 'rate_limited';
   }
+  if (error.status === 402) {
+    return 'rate_limited';
+  }
   if (error.status === 400) {
     if (error.message && error.message.indexOf('model') !== -1) {
       return 'model_failed';
@@ -224,6 +239,19 @@ function mapOpenRouterError(error) {
     return error.code === 'TIMEOUT' ? 'timeout' : 'network_failed';
   }
   return 'provider_failed';
+}
+
+function displayMessageForError(errorCode) {
+  var messages = {
+    missing_api_key: 'Set API key',
+    auth_failed: 'Check API key',
+    model_failed: 'Check model',
+    rate_limited: 'Limit reached',
+    network_failed: 'Connection failed',
+    timeout: 'Timed out',
+    provider_failed: 'AI failed'
+  };
+  return messages[errorCode] || messages.provider_failed;
 }
 
 // AppMessage senders
