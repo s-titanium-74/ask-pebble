@@ -73,25 +73,25 @@ Custom model id:
 
 On launch:
 
-1. Show `Loading...`.
+1. Show `Loading` / `one moment`.
 2. Watch sends a key state request to PebbleKit JS.
 3. PebbleKit JS returns whether an OpenRouter API key is saved.
 
 If key is saved:
 
-- Main: `Ask AI`
-- Sub: `Select to speak`
+- Main: `Ask Pebble`
+- Sub: `Select to ask >`
 
 If key is missing:
 
-- Main: `Set API key`
+- Main: `API key`
 - Sub: `Open settings`
 
 If key state check fails:
 
 - Show `Connection failed`.
 - Select retries the key state request.
-- While retrying, show `Loading...`.
+- While retrying, show `Loading` / `one moment`.
 
 After returning from the configuration UI, or when the watchapp regains focus, automatically request key state again. If the retry succeeds and a key is saved, transition to Idle / Ready. If the key is still missing, return to the missing-key screen.
 
@@ -99,9 +99,17 @@ After returning from the configuration UI, or when the watchapp regains focus, a
 
 When API key is available:
 
-- Main text: `Ask AI`
-- Sub text: `Select to speak`
+- Main text: `Ask Pebble`
+- Sub text: `Select to ask >`
 - Select starts Pebble Dictation.
+
+Idle visual treatment:
+
+- Background: blue leaning slightly teal.
+- Title: `Ask Pebble` in a white rounded title card.
+- Title card includes a small accent strip.
+- Prompt text: `Select to ask >`, centered, bold, and not inside a card.
+- Right-side button rail shows the Pebble button positions and highlights the middle Select button.
 
 The app does not show the previous answer on launch.
 
@@ -109,13 +117,13 @@ The app does not show the previous answer on launch.
 
 When API key is missing:
 
-- Main: `Set API key`
+- Main: `API key`
 - Sub: `Open settings`
 - Select shows a help screen.
 
 Help screen:
 
-- Main: `Open Pebble app`
+- Main: `Pebble app`
 - Sub: `Settings > API key`
 - Back returns to the missing-key screen.
 - When returning from settings or app focus, the watch automatically rechecks key state.
@@ -133,7 +141,7 @@ Help screen:
 
 After Dictation is accepted:
 
-- Show `Thinking...`.
+- Show `Thinking` / `making it tiny`.
 - Back cancels the current request, sends a `cancel` request to PebbleKit JS, and returns to Idle / Ready.
 - PebbleKit JS records the matching `requestId` as canceled.
 - If the HTTP request can be aborted on the JS side, abort it.
@@ -153,7 +161,7 @@ Timeout display:
 - Show only the answer body.
 - No `AI` title.
 - No status/header bar in MVP.
-- Background: white.
+- Background: pale cyan.
 - Text: black.
 - Up / Down scrolls the answer if needed.
 - Select starts the next Dictation.
@@ -589,9 +597,9 @@ Typography:
 Color semantics:
 
 - Startup / Loading: neutral.
-- Idle / Ask AI: blue.
+- Idle / Ask Pebble: blue leaning slightly teal.
 - Thinking: purple.
-- Answer: white background, black text.
+- Answer: pale cyan background, black text.
 - Error: red.
 - Missing API key / setup: orange or yellow.
 

@@ -46,6 +46,40 @@ static char s_last_utterance[512] = {0};
 static ErrorCode s_last_error_code = ERR_NONE;
 static bool s_has_api_key = false;
 
+static GColor cute_color(uint8_t red, uint8_t green, uint8_t blue) {
+  return GColorFromRGB(red, green, blue);
+}
+
+static void draw_button_rail(GContext *ctx, GRect bounds, GColor accent_color) {
+  const int16_t rail_x = bounds.size.w - 9;
+  const int16_t rail_w = 4;
+  const int16_t button_h = 18;
+  const int16_t center_y = bounds.size.h / 2 - button_h / 2;
+
+  graphics_context_set_fill_color(ctx, cute_color(170, 170, 255));
+  graphics_fill_rect(ctx, GRect(rail_x, center_y - 30, rail_w, button_h), 1, GCornersAll);
+  graphics_fill_rect(ctx, GRect(rail_x, center_y + 30, rail_w, button_h), 1, GCornersAll);
+
+  graphics_context_set_fill_color(ctx, accent_color);
+  graphics_fill_rect(ctx, GRect(rail_x - 3, center_y - 1, rail_w + 5, button_h + 2), 2, GCornersAll);
+}
+
+static void draw_idle_panel(GContext *ctx, GRect bounds) {
+  GRect title_panel = GRect(18, 20, bounds.size.w - 36, 38);
+  GRect title_shadow = GRect(20, 22, bounds.size.w - 36, 38);
+  GRect title_strip = GRect(26, 20, bounds.size.w - 52, 4);
+
+  graphics_context_set_fill_color(ctx, cute_color(0, 0, 170));
+  graphics_fill_rect(ctx, title_shadow, 7, GCornersAll);
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_rect(ctx, title_panel, 7, GCornersAll);
+  graphics_context_set_stroke_color(ctx, cute_color(0, 0, 170));
+  graphics_draw_round_rect(ctx, title_panel, 7);
+
+  graphics_context_set_fill_color(ctx, cute_color(255, 85, 127));
+  graphics_fill_rect(ctx, title_strip, 2, GCornersAll);
+}
+
 static void set_state(AppState state);
 static void send_key_state_request(void);
 static void send_ask_request(const char *utterance);
@@ -61,27 +95,48 @@ static void answer_click_config_provider(void *context);
 static DictationSession *s_dictation_session = NULL;
 
 static void bg_layer_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
   GColor bg_color;
+  GColor accent_color;
   switch (s_current_state) {
     case STATE_IDLE:
-      bg_color = GColorBlue;
+      bg_color = cute_color(0, 85, 170);
+      accent_color = cute_color(255, 85, 127);
       break;
     case STATE_THINKING:
-      bg_color = GColorPurple;
+      bg_color = cute_color(85, 85, 255);
+      accent_color = cute_color(0, 255, 170);
       break;
     case STATE_ERROR:
-      bg_color = GColorRed;
+      bg_color = cute_color(255, 85, 85);
+      accent_color = cute_color(255, 213, 85);
       break;
     case STATE_MISSING_KEY:
     case STATE_HELP:
-      bg_color = GColorRajah;
+      bg_color = cute_color(255, 213, 0);
+      accent_color = cute_color(255, 85, 127);
+      break;
+    case STATE_ANSWER:
+      bg_color = cute_color(170, 255, 255);
+      accent_color = cute_color(0, 128, 128);
       break;
     default:
       bg_color = GColorWhite;
+      accent_color = cute_color(0, 128, 128);
       break;
   }
   graphics_context_set_fill_color(ctx, bg_color);
-  graphics_fill_rect(ctx, layer_get_bounds(layer), 0, GCornerNone);
+  graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+
+  if (s_current_state != STATE_ANSWER) {
+    if (s_current_state == STATE_IDLE) {
+      draw_idle_panel(ctx, bounds);
+    }
+
+    graphics_context_set_stroke_color(ctx, s_current_state == STATE_IDLE ? accent_color : GColorWhite);
+    graphics_draw_round_rect(ctx, GRect(7, 7, bounds.size.w - 14, bounds.size.h - 14), 8);
+    draw_button_rail(ctx, bounds, accent_color);
+  }
 }
 
 static void set_text(const char *main, const char *sub) {
@@ -116,7 +171,7 @@ static void set_state(AppState state) {
   if (prev_state == STATE_ANSWER && state != STATE_ANSWER) {
     layer_remove_from_parent(text_layer_get_layer(s_main_text));
     layer_add_child(window_layer, text_layer_get_layer(s_main_text));
-    layer_set_frame(text_layer_get_layer(s_main_text), GRect(0, bounds.size.h / 2 - 30, bounds.size.w, 60));
+    layer_set_frame(text_layer_get_layer(s_main_text), GRect(8, bounds.size.h / 2 - 32, bounds.size.w - 16, 64));
     layer_set_hidden(text_layer_get_layer(s_sub_text), false);
     layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
     text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
@@ -128,7 +183,7 @@ static void set_state(AppState state) {
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, bounds.size.h));
       layer_set_hidden(text_layer_get_layer(s_sub_text), false);
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
-      set_text("Loading...", NULL);
+      set_text("Loading", "one moment");
       text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
       text_layer_set_text_color(s_main_text, GColorBlack);
       text_layer_set_text_color(s_sub_text, GColorBlack);
@@ -137,34 +192,42 @@ static void set_state(AppState state) {
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, bounds.size.h));
       layer_set_hidden(text_layer_get_layer(s_sub_text), false);
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
-      set_text("Ask AI", "Select to speak");
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(20, 25, bounds.size.w - 40, 28));
+      layer_set_frame(text_layer_get_layer(s_sub_text), GRect(20, bounds.size.h / 2 - 12, bounds.size.w - 40, 28));
+      set_text("Ask Pebble", "Select to ask >");
       text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
-      text_layer_set_text_color(s_main_text, GColorWhite);
+      text_layer_set_text_color(s_main_text, GColorBlue);
       text_layer_set_text_color(s_sub_text, GColorWhite);
       break;
     case STATE_MISSING_KEY:
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, bounds.size.h));
       layer_set_hidden(text_layer_get_layer(s_sub_text), false);
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
-      set_text("Set API key", "Open settings");
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(8, bounds.size.h / 2 - 32, bounds.size.w - 16, 64));
+      layer_set_frame(text_layer_get_layer(s_sub_text), GRect(8, bounds.size.h / 2 + 20, bounds.size.w - 16, 44));
+      set_text("API key", "Open settings");
       text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
-      text_layer_set_text_color(s_main_text, GColorWhite);
-      text_layer_set_text_color(s_sub_text, GColorWhite);
+      text_layer_set_text_color(s_main_text, GColorBlack);
+      text_layer_set_text_color(s_sub_text, GColorBlack);
       break;
     case STATE_HELP:
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, bounds.size.h));
       layer_set_hidden(text_layer_get_layer(s_sub_text), false);
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
-      set_text("Open Pebble app", "Settings > API key");
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(8, bounds.size.h / 2 - 32, bounds.size.w - 16, 64));
+      layer_set_frame(text_layer_get_layer(s_sub_text), GRect(8, bounds.size.h / 2 + 20, bounds.size.w - 16, 44));
+      set_text("Pebble app", "Settings > API key");
       text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
-      text_layer_set_text_color(s_main_text, GColorWhite);
-      text_layer_set_text_color(s_sub_text, GColorWhite);
+      text_layer_set_text_color(s_main_text, GColorBlack);
+      text_layer_set_text_color(s_sub_text, GColorBlack);
       break;
     case STATE_THINKING:
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, bounds.size.h));
       layer_set_hidden(text_layer_get_layer(s_sub_text), false);
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
-      set_text("Thinking...", NULL);
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(8, bounds.size.h / 2 - 32, bounds.size.w - 16, 64));
+      layer_set_frame(text_layer_get_layer(s_sub_text), GRect(8, bounds.size.h / 2 + 20, bounds.size.w - 16, 44));
+      set_text("Thinking", "making it tiny");
       text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
       text_layer_set_text_color(s_main_text, GColorWhite);
       text_layer_set_text_color(s_sub_text, GColorWhite);
@@ -174,12 +237,12 @@ static void set_state(AppState state) {
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), false);
       layer_remove_from_parent(text_layer_get_layer(s_main_text));
       scroll_layer_add_child(s_scroll_layer, text_layer_get_layer(s_main_text));
-      layer_set_frame(text_layer_get_layer(s_main_text), GRect(0, 0, bounds.size.w, 2000));
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(6, 8, bounds.size.w - 12, 2000));
       text_layer_set_text_color(s_main_text, GColorBlack);
       text_layer_set_text_alignment(s_main_text, GTextAlignmentLeft);
       scroll_layer_set_content_offset(s_scroll_layer, GPoint(0, 0), false);
       GSize content_size = text_layer_get_content_size(s_main_text);
-      scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, content_size.h + 4));
+      scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, content_size.h + 18));
       scroll_layer_set_callbacks(s_scroll_layer, (ScrollLayerCallbacks) {
         .click_config_provider = answer_click_config_provider
       });
@@ -190,6 +253,8 @@ static void set_state(AppState state) {
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, bounds.size.h));
       layer_set_hidden(text_layer_get_layer(s_sub_text), false);
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(8, bounds.size.h / 2 - 32, bounds.size.w - 16, 64));
+      layer_set_frame(text_layer_get_layer(s_sub_text), GRect(8, bounds.size.h / 2 + 20, bounds.size.w - 16, 44));
       text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
       text_layer_set_text_color(s_main_text, GColorWhite);
       text_layer_set_text_color(s_sub_text, GColorWhite);
@@ -394,14 +459,14 @@ static void main_window_load(Window *window) {
   layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
   layer_add_child(window_layer, scroll_layer_get_layer(s_scroll_layer));
 
-  s_main_text = text_layer_create(GRect(0, bounds.size.h / 2 - 30, bounds.size.w, 60));
+  s_main_text = text_layer_create(GRect(8, bounds.size.h / 2 - 32, bounds.size.w - 16, 64));
   text_layer_set_font(s_main_text, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
   text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
   text_layer_set_background_color(s_main_text, GColorClear);
   layer_add_child(window_layer, text_layer_get_layer(s_main_text));
 
-  s_sub_text = text_layer_create(GRect(0, bounds.size.h / 2 + 20, bounds.size.w, 40));
-  text_layer_set_font(s_sub_text, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  s_sub_text = text_layer_create(GRect(8, bounds.size.h / 2 + 20, bounds.size.w - 16, 44));
+  text_layer_set_font(s_sub_text, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
   text_layer_set_text_alignment(s_sub_text, GTextAlignmentCenter);
   text_layer_set_background_color(s_sub_text, GColorClear);
   layer_add_child(window_layer, text_layer_get_layer(s_sub_text));
