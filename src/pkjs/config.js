@@ -3,7 +3,7 @@ var localStorageKey = 'ask_pebbpe_settings';
 var defaultSettings = {
   apiKey: '',
   language: 'Auto',
-  model: 'meta-llama/llama-3.1-8b-instruct',
+  model: 'openai/gpt-oss-20b',
   customModelId: '',
   systemInstruction: '',
   maxOutputTokens: '300',

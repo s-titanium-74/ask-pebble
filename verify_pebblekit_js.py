@@ -52,7 +52,7 @@ class MockPebbleKitJS:
         self.defaultSettings = {
             'apiKey': api_key,
             'language': 'Auto',
-            'model': 'meta-llama/llama-3.1-8b-instruct',
+            'model': 'openai/gpt-oss-20b',
             'customModelId': '',
             'systemInstruction': '',
             'maxOutputTokens': '300',
@@ -92,7 +92,7 @@ class MockPebbleKitJS:
     def buildSystemInstruction(self, settings):
         """index.js の buildSystemInstruction() 相当"""
         parts = [
-            'Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.'
+            'Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. The user message is speech-to-text dictation, so infer the intended meaning despite recognition errors, missing punctuation, or unstable wording. If asked your name, answer Pebble. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.'
         ]
         
         language = settings.get('language', 'Auto')
@@ -202,12 +202,14 @@ class MockPebbleKitJS:
         payload = {
             'model': model,
             'messages': messages,
-            'max_tokens': max_tokens,
-            'provider': {
+            'max_tokens': max_tokens
+        }
+        
+        if model == 'openai/gpt-oss-20b':
+            payload['provider'] = {
                 'only': ['groq'],
                 'allow_fallbacks': False
             }
-        }
         
         headers = {
             'Authorization': f'Bearer {api_key}',
@@ -298,7 +300,7 @@ def test_settings_management():
     # デフォルト設定の確認
     settings = pkjs.getSettings()
     assert settings['language'] == 'Auto', "Default language should be Auto"
-    assert settings['model'] == 'meta-llama/llama-3.1-8b-instruct', "Default model should be 8b"
+    assert settings['model'] == 'openai/gpt-oss-20b', "Default model should be speed"
     assert pkjs.hasApiKey() == True, "Should have API key"
     
     # カスタムモデルの確認
@@ -319,6 +321,9 @@ def test_system_instruction():
     settings = pkjs.getSettings()
     instruction = pkjs.buildSystemInstruction(settings)
     assert '240 characters' in instruction, "Should mention 240 chars"
+    assert 'speech-to-text dictation' in instruction, "Should mention dictation input"
+    assert 'recognition errors' in instruction, "Should mention recognition errors"
+    assert 'answer Pebble' in instruction, "Should answer name as Pebble"
     assert 'Detect' in instruction, "Should mention detect language"
     
     # 日本語

@@ -18,15 +18,16 @@ The original feasibility and requirements notes remain in `docs/requirements.md`
 ### 2.1 MVP Provider
 
 - MVP provider: OpenRouter.
-- OpenRouter provider route: Groq only.
-- Provider fallback: off.
+- OpenRouter provider route: model-specific.
+- Speed model route: Groq only, fallback off.
+- Balance, Quality, and custom models use OpenRouter default routing.
 - Direct Groq API is not the MVP path. It remains a future comparison or alternative path.
 
 Conceptual OpenRouter request behavior:
 
 ```json
 {
-  "model": "meta-llama/llama-3.1-8b-instruct",
+  "model": "openai/gpt-oss-20b",
   "messages": [],
   "provider": {
     "only": ["groq"],
@@ -51,15 +52,15 @@ OpenRouter requests include:
 
 Default model:
 
-- `meta-llama/llama-3.1-8b-instruct`
+- `openai/gpt-oss-20b`
 
 Recommended model dropdown:
 
-- `meta-llama/llama-3.1-8b-instruct`
-- `meta-llama/llama-3.3-70b-instruct`
-- `openai/gpt-oss-20b`
+- Speed (Groq GPT-OSS 20B): `openai/gpt-oss-20b`
+- Balance (GPT-5 Mini): `openai/gpt-5-mini`
+- Quality (Claude Haiku 4.5): `anthropic/claude-haiku-4.5`
 
-Before implementation, each dropdown model must be verified against OpenRouter REST API with Groq-only routing and fallback disabled. Any model that does not work with `provider.only: ["groq"]` and `provider.allow_fallbacks: false` must be removed from the dropdown. The default model must also be one of the verified working models.
+Before implementation, each dropdown model must be verified against OpenRouter REST API. Speed must be verified with `provider.only: ["groq"]` and `provider.allow_fallbacks: false`; the other dropdown models must be verified with OpenRouter default routing. Any model that does not work must be removed from the dropdown. The default model must also be one of the verified working models.
 
 Custom model id:
 
@@ -252,8 +253,8 @@ Configuration UI language:
 Provider information display:
 
 - `Provider: OpenRouter`
-- `Route: Groq only`
-- `Fallbacks: Off`
+- `Routing: Model-specific`
+- `Speed route: Groq only`
 
 These are read-only in MVP.
 
@@ -349,7 +350,7 @@ System instruction is composed from:
 Base instruction:
 
 ```text
-Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.
+Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. The user message is speech-to-text dictation, so infer the intended meaning despite recognition errors, missing punctuation, or unstable wording. If asked your name, answer Pebble. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.
 ```
 
 Language instruction:

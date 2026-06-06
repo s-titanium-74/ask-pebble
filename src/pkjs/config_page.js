@@ -32,8 +32,8 @@ module.exports = '<!DOCTYPE html>' +
 '<input type="text" id="apiKey" placeholder="Enter your OpenRouter API key">' +
 '<div class="provider-info">' +
 '<p><strong>Provider:</strong> OpenRouter</p>' +
-'<p><strong>Route:</strong> Groq only</p>' +
-'<p><strong>Fallbacks:</strong> Off</p>' +
+'<p><strong>Routing:</strong> Model-specific</p>' +
+'<p><strong>Speed route:</strong> Groq only</p>' +
 '</div>' +
 '<label for="language">Response language</label>' +
 '<select id="language">' +
@@ -57,9 +57,9 @@ module.exports = '<!DOCTYPE html>' +
 '<textarea id="systemInstruction" rows="3" placeholder="Optional custom instruction"></textarea>' +
 '<label for="model">Recommended model</label>' +
 '<select id="model">' +
-'<option value="meta-llama/llama-3.1-8b-instruct" selected>meta-llama/llama-3.1-8b-instruct</option>' +
-'<option value="meta-llama/llama-3.3-70b-instruct">meta-llama/llama-3.3-70b-instruct</option>' +
-'<option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>' +
+'<option value="openai/gpt-oss-20b" selected>Speed (Groq GPT-OSS 20B)</option>' +
+'<option value="openai/gpt-5-mini">Balance (GPT-5 Mini)</option>' +
+'<option value="anthropic/claude-haiku-4.5">Quality (Claude Haiku 4.5)</option>' +
 '</select>' +
 '<button class="link-btn" onclick="window.open(\'https://openrouter.ai/settings/keys\', \'_blank\')">Create OpenRouter API key</button>' +
 '<button class="link-btn" onclick="window.open(\'https://openrouter.ai/settings/credits\', \'_blank\')">Check credits / usage</button>' +

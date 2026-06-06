@@ -43,7 +43,7 @@ var xhrRequest = function (url, method, headers, body, timeout, callback) {
 module.exports = {
   request: function(options, callback) {
     var apiKey = options.apiKey;
-    var model = options.model || 'meta-llama/llama-3.1-8b-instruct';
+    var model = options.model || 'openai/gpt-oss-20b';
     var messages = options.messages || [];
     var maxTokens = options.maxTokens || 300;
     var timeout = options.timeout || 12000;
@@ -56,15 +56,20 @@ module.exports = {
       'X-OpenRouter-Title': 'Ask Pebbpe'
     };
     
-    var body = JSON.stringify({
+    var payload = {
       model: model,
       messages: messages,
-      max_tokens: maxTokens,
-      provider: {
+      max_tokens: maxTokens
+    };
+    
+    if (model === 'openai/gpt-oss-20b') {
+      payload.provider = {
         only: ['groq'],
         allow_fallbacks: false
-      }
-    });
+      };
+    }
+    
+    var body = JSON.stringify(payload);
     
     return xhrRequest(url, 'POST', headers, body, timeout, callback);
   }
