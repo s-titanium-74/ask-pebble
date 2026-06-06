@@ -29,7 +29,7 @@ MODELS = [
 
 # テスト質問
 TEST_MESSAGES = [
-    {"role": "system", "content": "Answer for a small smartwatch screen. Be concise, practical, and keep it under 240 characters.\nAnswer in Japanese."},
+    {"role": "system", "content": "Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.\nDetect the user's language from the message and answer in the same language."},
     {"role": "user", "content": "今日の天気が気になります。短く教えて。"}
 ]
 

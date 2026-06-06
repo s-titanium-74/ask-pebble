@@ -2,7 +2,7 @@ var localStorageKey = 'ask_pebbpe_settings';
 
 var defaultSettings = {
   apiKey: '',
-  language: 'Japanese',
+  language: 'Auto',
   model: 'meta-llama/llama-3.1-8b-instruct',
   customModelId: '',
   systemInstruction: '',

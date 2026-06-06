@@ -309,13 +309,24 @@ Delete API key:
 
 Options:
 
+- `Auto`
 - `Japanese`
 - `English`
-- `Auto`
+- `Chinese (Simplified)`
+- `Chinese (Traditional)`
+- `Korean`
+- `Spanish`
+- `French`
+- `German`
+- `Portuguese`
+- `Italian`
+- `Russian`
+- `Arabic`
+- `Hindi`
 
 Default:
 
-- `Japanese`
+- `Auto`
 
 Language setting controls AI answer language and system instruction composition. It does not directly control Pebble Dictation recognition language.
 
@@ -325,8 +336,7 @@ Configuration note:
 
 Auto behavior:
 
-- If transcription contains Japanese characters, answer in Japanese.
-- Otherwise, answer in English.
+- Detect the user's language from the message and answer in the same language.
 
 ### 5.6 System Instruction
 
@@ -339,14 +349,25 @@ System instruction is composed from:
 Base instruction:
 
 ```text
-Answer for a small smartwatch screen. Be concise, practical, and keep it under 240 characters.
+Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.
 ```
 
 Language instruction:
 
+- Auto: `Detect the user's language from the message and answer in the same language.`
 - Japanese: `Answer in Japanese.`
 - English: `Answer in English.`
-- Auto: `Detect the user's language from the message and answer in the same language.`
+- Chinese (Simplified): `Answer in Simplified Chinese.`
+- Chinese (Traditional): `Answer in Traditional Chinese.`
+- Korean: `Answer in Korean.`
+- Spanish: `Answer in Spanish.`
+- French: `Answer in French.`
+- German: `Answer in German.`
+- Portuguese: `Answer in Portuguese.`
+- Italian: `Answer in Italian.`
+- Russian: `Answer in Russian.`
+- Arabic: `Answer in Arabic.`
+- Hindi: `Answer in Hindi.`
 
 Custom system instruction:
 

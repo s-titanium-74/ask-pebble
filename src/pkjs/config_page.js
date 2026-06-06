@@ -37,11 +37,24 @@ module.exports = '<!DOCTYPE html>' +
 '</div>' +
 '<label for="language">Response language</label>' +
 '<select id="language">' +
-'<option value="Japanese" selected>Japanese</option>' +
+'<option value="Auto" selected>Auto</option>' +
+'<option value="Japanese">Japanese</option>' +
 '<option value="English">English</option>' +
-'<option value="Auto">Auto</option>' +
+'<option value="Chinese (Simplified)">Chinese (Simplified)</option>' +
+'<option value="Chinese (Traditional)">Chinese (Traditional)</option>' +
+'<option value="Korean">Korean</option>' +
+'<option value="Spanish">Spanish</option>' +
+'<option value="French">French</option>' +
+'<option value="German">German</option>' +
+'<option value="Portuguese">Portuguese</option>' +
+'<option value="Italian">Italian</option>' +
+'<option value="Russian">Russian</option>' +
+'<option value="Arabic">Arabic</option>' +
+'<option value="Hindi">Hindi</option>' +
 '</select>' +
 '<p class="note">Controls AI answer language only. Dictation language follows your phone system language.</p>' +
+'<label for="systemInstruction">System instruction</label>' +
+'<textarea id="systemInstruction" rows="3" placeholder="Optional custom instruction"></textarea>' +
 '<label for="model">Recommended model</label>' +
 '<select id="model">' +
 '<option value="meta-llama/llama-3.1-8b-instruct" selected>meta-llama/llama-3.1-8b-instruct</option>' +
@@ -59,8 +72,6 @@ module.exports = '<!DOCTYPE html>' +
 '<label for="customModelId">Custom model id</label>' +
 '<input type="text" id="customModelId" placeholder="Optional: override dropdown model">' +
 '<div id="customModelStatus" style="display:none; color:#1976d2; font-size:13px; margin-bottom:8px;">Using custom model</div>' +
-'<label for="systemInstruction">System instruction</label>' +
-'<textarea id="systemInstruction" rows="3" placeholder="Optional custom instruction"></textarea>' +
 '<label for="maxOutputTokens">Max output tokens</label>' +
 '<select id="maxOutputTokens">' +
 '<option value="128">128</option>' +

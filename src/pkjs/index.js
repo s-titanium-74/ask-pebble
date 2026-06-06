@@ -139,16 +139,29 @@ function buildMessages(utterance, settings) {
 
 function buildSystemInstruction(settings) {
   var parts = [
-    'Answer for a small smartwatch screen. Be concise, practical, and keep it under 240 characters.'
+    'Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.'
   ];
   
-  var language = settings.language || 'Japanese';
-  if (language === 'Japanese') {
-    parts.push('Answer in Japanese.');
-  } else if (language === 'English') {
-    parts.push('Answer in English.');
-  } else if (language === 'Auto') {
+  var language = settings.language || 'Auto';
+  var languageInstructions = {
+    'Japanese': 'Answer in Japanese.',
+    'English': 'Answer in English.',
+    'Chinese (Simplified)': 'Answer in Simplified Chinese.',
+    'Chinese (Traditional)': 'Answer in Traditional Chinese.',
+    'Korean': 'Answer in Korean.',
+    'Spanish': 'Answer in Spanish.',
+    'French': 'Answer in French.',
+    'German': 'Answer in German.',
+    'Portuguese': 'Answer in Portuguese.',
+    'Italian': 'Answer in Italian.',
+    'Russian': 'Answer in Russian.',
+    'Arabic': 'Answer in Arabic.',
+    'Hindi': 'Answer in Hindi.'
+  };
+  if (language === 'Auto') {
     parts.push('Detect the user\'s language from the message and answer in the same language.');
+  } else if (languageInstructions[language]) {
+    parts.push(languageInstructions[language]);
   }
   
   if (settings.systemInstruction) {

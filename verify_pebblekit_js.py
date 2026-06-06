@@ -51,7 +51,7 @@ class MockPebbleKitJS:
         # デフォルト設定
         self.defaultSettings = {
             'apiKey': api_key,
-            'language': 'Japanese',
+            'language': 'Auto',
             'model': 'meta-llama/llama-3.1-8b-instruct',
             'customModelId': '',
             'systemInstruction': '',
@@ -92,16 +92,29 @@ class MockPebbleKitJS:
     def buildSystemInstruction(self, settings):
         """index.js の buildSystemInstruction() 相当"""
         parts = [
-            'Answer for a small smartwatch screen. Be concise, practical, and keep it under 240 characters.'
+            'Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.'
         ]
         
-        language = settings.get('language', 'Japanese')
-        if language == 'Japanese':
-            parts.append('Answer in Japanese.')
-        elif language == 'English':
-            parts.append('Answer in English.')
-        elif language == 'Auto':
+        language = settings.get('language', 'Auto')
+        language_instructions = {
+            'Japanese': 'Answer in Japanese.',
+            'English': 'Answer in English.',
+            'Chinese (Simplified)': 'Answer in Simplified Chinese.',
+            'Chinese (Traditional)': 'Answer in Traditional Chinese.',
+            'Korean': 'Answer in Korean.',
+            'Spanish': 'Answer in Spanish.',
+            'French': 'Answer in French.',
+            'German': 'Answer in German.',
+            'Portuguese': 'Answer in Portuguese.',
+            'Italian': 'Answer in Italian.',
+            'Russian': 'Answer in Russian.',
+            'Arabic': 'Answer in Arabic.',
+            'Hindi': 'Answer in Hindi.'
+        }
+        if language == 'Auto':
             parts.append('Detect the user\'s language from the message and answer in the same language.')
+        elif language in language_instructions:
+            parts.append(language_instructions[language])
         
         if settings.get('systemInstruction'):
             parts.append(settings['systemInstruction'])
@@ -284,7 +297,7 @@ def test_settings_management():
     
     # デフォルト設定の確認
     settings = pkjs.getSettings()
-    assert settings['language'] == 'Japanese', "Default language should be Japanese"
+    assert settings['language'] == 'Auto', "Default language should be Auto"
     assert settings['model'] == 'meta-llama/llama-3.1-8b-instruct', "Default model should be 8b"
     assert pkjs.hasApiKey() == True, "Should have API key"
     
@@ -302,16 +315,40 @@ def test_system_instruction():
     
     pkjs = MockPebbleKitJS('test-key')
     
-    # 日本語
+    # Default: Auto
     settings = pkjs.getSettings()
     instruction = pkjs.buildSystemInstruction(settings)
     assert '240 characters' in instruction, "Should mention 240 chars"
+    assert 'Detect' in instruction, "Should mention detect language"
+    
+    # 日本語
+    settings['language'] = 'Japanese'
+    instruction = pkjs.buildSystemInstruction(settings)
     assert 'Japanese' in instruction, "Should mention Japanese"
     
     # 英語
     settings['language'] = 'English'
     instruction = pkjs.buildSystemInstruction(settings)
     assert 'English' in instruction, "Should mention English"
+
+    # Major language options
+    expected_languages = {
+        'Chinese (Simplified)': 'Simplified Chinese',
+        'Chinese (Traditional)': 'Traditional Chinese',
+        'Korean': 'Korean',
+        'Spanish': 'Spanish',
+        'French': 'French',
+        'German': 'German',
+        'Portuguese': 'Portuguese',
+        'Italian': 'Italian',
+        'Russian': 'Russian',
+        'Arabic': 'Arabic',
+        'Hindi': 'Hindi'
+    }
+    for language, expected in expected_languages.items():
+        settings['language'] = language
+        instruction = pkjs.buildSystemInstruction(settings)
+        assert expected in instruction, f"Should mention {expected}"
     
     # Auto
     settings['language'] = 'Auto'
