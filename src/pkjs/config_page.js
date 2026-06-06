@@ -35,13 +35,13 @@ module.exports = '<!DOCTYPE html>' +
 '<p><strong>Route:</strong> Groq only</p>' +
 '<p><strong>Fallbacks:</strong> Off</p>' +
 '</div>' +
-'<label for="language">Language</label>' +
+'<label for="language">Response language</label>' +
 '<select id="language">' +
 '<option value="Japanese" selected>Japanese</option>' +
 '<option value="English">English</option>' +
 '<option value="Auto">Auto</option>' +
 '</select>' +
-'<p class="note">Language controls AI answers, not Pebble voice recognition.</p>' +
+'<p class="note">Controls AI answer language only. Dictation language follows your phone system language.</p>' +
 '<label for="model">Recommended model</label>' +
 '<select id="model">' +
 '<option value="meta-llama/llama-3.1-8b-instruct" selected>meta-llama/llama-3.1-8b-instruct</option>' +

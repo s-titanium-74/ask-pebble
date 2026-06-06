@@ -56,6 +56,7 @@ static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResul
 static void dictation_callback(DictationSession *session, DictationSessionStatus status, char *transcription, void *context);
 static void window_appear_handler(Window *window);
 static void click_config_provider(void *context);
+static void answer_click_config_provider(void *context);
 
 static DictationSession *s_dictation_session = NULL;
 
@@ -116,9 +117,9 @@ static void set_state(AppState state) {
   if (prev_state == STATE_ANSWER && state != STATE_ANSWER) {
     layer_remove_from_parent(text_layer_get_layer(s_main_text));
     layer_add_child(window_layer, text_layer_get_layer(s_main_text));
+    layer_set_frame(text_layer_get_layer(s_main_text), GRect(0, bounds.size.h / 2 - 30, bounds.size.w, 60));
     layer_set_hidden(text_layer_get_layer(s_sub_text), false);
     layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), true);
-    text_layer_set_size(s_main_text, GSize(bounds.size.w, 60));
     text_layer_set_text_alignment(s_main_text, GTextAlignmentCenter);
     window_set_click_config_provider(s_main_window, click_config_provider);
   }
@@ -174,12 +175,16 @@ static void set_state(AppState state) {
       layer_set_hidden(scroll_layer_get_layer(s_scroll_layer), false);
       layer_remove_from_parent(text_layer_get_layer(s_main_text));
       scroll_layer_add_child(s_scroll_layer, text_layer_get_layer(s_main_text));
-      scroll_layer_set_click_config_onto_window(s_scroll_layer, s_main_window);
-      text_layer_set_size(s_main_text, GSize(bounds.size.w, 2000));
+      layer_set_frame(text_layer_get_layer(s_main_text), GRect(0, 0, bounds.size.w, 2000));
       text_layer_set_text_color(s_main_text, GColorBlack);
       text_layer_set_text_alignment(s_main_text, GTextAlignmentLeft);
+      scroll_layer_set_content_offset(s_scroll_layer, GPoint(0, 0), false);
       GSize content_size = text_layer_get_content_size(s_main_text);
       scroll_layer_set_content_size(s_scroll_layer, GSize(bounds.size.w, content_size.h + 4));
+      scroll_layer_set_callbacks(s_scroll_layer, (ScrollLayerCallbacks) {
+        .click_config_provider = answer_click_config_provider
+      });
+      scroll_layer_set_click_config_onto_window(s_scroll_layer, s_main_window);
       break;
     }
     case STATE_ERROR:
@@ -208,10 +213,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   if (strcmp(type, "key_state") == 0) {
     Tuple *has_key_tuple = dict_find(iterator, KEY_HAS_API_KEY);
     s_has_api_key = has_key_tuple ? has_key_tuple->value->uint8 : false;
-    if (s_has_api_key) {
-      set_state(STATE_IDLE);
-    } else {
-      set_state(STATE_MISSING_KEY);
+    if (s_current_state == STATE_LOADING || s_current_state == STATE_IDLE ||
+        s_current_state == STATE_MISSING_KEY || s_current_state == STATE_HELP) {
+      if (s_has_api_key) {
+        set_state(STATE_IDLE);
+      } else {
+        set_state(STATE_MISSING_KEY);
+      }
     }
   }
   else if (strcmp(type, "answer") == 0) {
@@ -258,7 +266,7 @@ static void send_key_state_request(void) {
   AppMessageResult result = app_message_outbox_begin(&iter);
   if (result == APP_MSG_OK) {
     dict_write_cstring(iter, KEY_TYPE, "key_state");
-    dict_write_uint32(iter, KEY_REQUEST_ID, ++s_current_request_id);
+    dict_write_uint32(iter, KEY_REQUEST_ID, 0);
     send_app_message(iter);
   }
 }
@@ -299,19 +307,7 @@ static void dictation_callback(DictationSession *session, DictationSessionStatus
     set_state(STATE_THINKING);
     send_ask_request(s_dictation_context.text);
   } else {
-    if (status == DictationSessionStatusFailureTranscriptionRejected ||
-        status == DictationSessionStatusFailureTranscriptionRejectedWithError ||
-        status == DictationSessionStatusFailureRecognizerError ||
-        status == DictationSessionStatusFailureConnectivityError ||
-        status == DictationSessionStatusFailureInternalError ||
-        status == DictationSessionStatusFailureDisabled ||
-        status == DictationSessionStatusFailureSystemAborted) {
-      s_last_error_code = ERR_MIC_UNAVAILABLE;
-      set_state(STATE_ERROR);
-      set_text("Voice unavailable", NULL);
-    } else {
-      set_state(STATE_IDLE);
-    }
+    set_state(STATE_IDLE);
   }
 }
 
@@ -321,7 +317,13 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
       send_key_state_request();
       break;
     case STATE_IDLE:
-      if (s_dictation_session) dictation_session_start(s_dictation_session);
+      if (s_dictation_session) {
+        dictation_session_start(s_dictation_session);
+      } else {
+        s_last_error_code = ERR_MIC_UNAVAILABLE;
+        set_state(STATE_ERROR);
+        set_text("Voice unavailable", NULL);
+      }
       break;
     case STATE_MISSING_KEY:
       set_state(STATE_HELP);
@@ -335,7 +337,13 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
       }
       break;
     case STATE_ANSWER:
-      if (s_dictation_session) dictation_session_start(s_dictation_session);
+      if (s_dictation_session) {
+        dictation_session_start(s_dictation_session);
+      } else {
+        s_last_error_code = ERR_MIC_UNAVAILABLE;
+        set_state(STATE_ERROR);
+        set_text("Voice unavailable", NULL);
+      }
       break;
     default:
       break;
@@ -362,6 +370,11 @@ static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void click_config_provider(void *context) {
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
+  window_single_click_subscribe(BUTTON_ID_BACK, back_click_handler);
+}
+
+static void answer_click_config_provider(void *context) {
   window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
   window_single_click_subscribe(BUTTON_ID_BACK, back_click_handler);
 }
