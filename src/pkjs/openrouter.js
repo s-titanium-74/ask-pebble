@@ -53,7 +53,7 @@ module.exports = {
     var headers = {
       'Authorization': 'Bearer ' + apiKey,
       'Content-Type': 'application/json',
-      'X-OpenRouter-Title': 'Ask Pebbpe'
+      'X-OpenRouter-Title': 'Ask Pebble'
     };
     
     var payload = {

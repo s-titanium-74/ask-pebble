@@ -96,4 +96,6 @@ A successful build leaves this file:
 build/pebble.pbw
 ```
 
+For public release uploads, use `ask-pebble.pbw` as the published filename.
+
 You can also check the generated platform directories under `build/aplite`, `build/basalt`, `build/chalk`, and `build/diorite`.

@@ -97,7 +97,7 @@ def call_openrouter(api_key, model, messages, max_tokens=300):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "X-OpenRouter-Title": "Ask Pebbpe Context Tool Verify",
+        "X-OpenRouter-Title": "Ask Pebble Context Tool Verify",
     }
 
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")

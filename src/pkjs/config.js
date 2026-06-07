@@ -1,4 +1,4 @@
-var localStorageKey = 'ask_pebbpe_settings';
+var localStorageKey = 'ask_pebble_settings';
 
 var defaultSettings = {
   apiKey: '',

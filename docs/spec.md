@@ -1,6 +1,6 @@
-# Ask Pebbpe MVP UI / Functional Specification
+# Ask Pebble MVP UI / Functional Specification
 
-This document captures the decided MVP UI and functional behavior for the Ask Pebbpe PoC.
+This document captures the decided MVP UI and functional behavior for the Ask Pebble PoC.
 
 The original feasibility and requirements notes remain in `docs/requirements.md`. This file is the implementation-facing specification produced from follow-up product decisions.
 
@@ -44,7 +44,7 @@ OpenRouter requests include:
 
 - `Authorization: Bearer <OpenRouter API key>`
 - `Content-Type: application/json`
-- `X-OpenRouter-Title: Ask Pebbpe`
+- `X-OpenRouter-Title: Ask Pebble`
 
 `HTTP-Referer` and `X-Title` are not required for MVP unless a stable app/site URL exists later.
 

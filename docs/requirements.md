@@ -1,4 +1,4 @@
-# Ask Pebbpe Time 2 BYOK AI Voice Q&A PoC 要件定義・実現可能性調査
+# Ask Pebble Time 2 BYOK AI Voice Q&A PoC 要件定義・実現可能性調査
 
 ## 1. 背景と目的
 
@@ -358,7 +358,7 @@ v2 調査に進む前に、次を確認する。
 - Pebble Dictation で日本語テキストが取得できる。
 - Pebble から `AppMessage` で PebbleKit JS へテキストを送れる。
 - Android の PebbleKit JS から OpenRouter API へ `Authorization` header 付き HTTPS request を送れる。
-- OpenRouter request に `X-OpenRouter-Title: Ask Pebbpe` を付けられる。
+- OpenRouter request に `X-OpenRouter-Title: Ask Pebble` を付けられる。
 - Speed model で OpenRouter の provider routing による Groq only / fallback off を指定できる。
 - Pebble app の設定画面で OpenRouter API key と OpenRouter model を保存できる。
 - PebbleKit JS が OpenRouter API response を parse し、表示用の短文回答へ変換できる。

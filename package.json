@@ -1,12 +1,12 @@
 {
-  "name": "ask-pebbpe",
-  "author": "Your Name",
+  "name": "ask-pebble",
+  "author": "Katsuya Ohta",
   "version": "1.0.0",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "Ask Pebbpe",
+    "displayName": "Ask Pebble",
     "uuid": "0050cb35-633f-4301-992e-4a558462f29f",
     "sdkVersion": "3",
     "enableMultiJS": true,

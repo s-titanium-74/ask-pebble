@@ -72,7 +72,7 @@ def call_openrouter(api_key, model, messages):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "X-OpenRouter-Title": "Ask Pebbpe"
+        "X-OpenRouter-Title": "Ask Pebble"
     }
     
     data = json.dumps(payload).encode("utf-8")

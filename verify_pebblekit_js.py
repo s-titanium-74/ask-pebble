@@ -64,12 +64,12 @@ class MockPebbleKitJS:
         }
         
         # 設定保存
-        self.localStorage.setItem('ask_pebbpe_settings', json.dumps(self.defaultSettings))
+        self.localStorage.setItem('ask_pebble_settings', json.dumps(self.defaultSettings))
     
     def getSettings(self):
         """config.js の getSettings() 相当"""
         try:
-            stored = self.localStorage.getItem('ask_pebbpe_settings')
+            stored = self.localStorage.getItem('ask_pebble_settings')
             if stored:
                 parsed = json.loads(stored)
                 settings = {}
@@ -294,7 +294,7 @@ class MockPebbleKitJS:
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
-            'X-OpenRouter-Title': 'Ask Pebbpe'
+            'X-OpenRouter-Title': 'Ask Pebble'
         }
         
         data = json.dumps(payload).encode('utf-8')
@@ -385,7 +385,7 @@ def test_settings_management():
     
     # カスタムモデルの確認
     settings['customModelId'] = 'custom-model-123'
-    pkjs.localStorage.setItem('ask_pebbpe_settings', json.dumps(settings))
+    pkjs.localStorage.setItem('ask_pebble_settings', json.dumps(settings))
     assert pkjs.getModel() == 'custom-model-123', "Custom model should take priority"
     
     print("  [PASS] Settings management works correctly")
@@ -519,7 +519,7 @@ def test_conversation_memory_disabled():
     settings = pkjs.getSettings()
     settings['memoryDepth'] = '0'
     settings['includeTimeContext'] = False
-    pkjs.localStorage.setItem('ask_pebbpe_settings', json.dumps(settings))
+    pkjs.localStorage.setItem('ask_pebble_settings', json.dumps(settings))
 
     pkjs.conversationMemory = [
         {'role': 'user', 'content': 'Old question'},

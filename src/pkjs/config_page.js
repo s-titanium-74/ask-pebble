@@ -3,7 +3,7 @@ module.exports = '<!DOCTYPE html>' +
 '<head>' +
 '<meta charset="utf-8">' +
 '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-'<title>Ask Pebbpe Settings</title>' +
+'<title>Ask Pebble Settings</title>' +
 '<style>' +
 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; background: #f5f5f5; max-width: 400px; margin: 0 auto; }' +
 'h1 { font-size: 20px; margin-bottom: 16px; }' +
@@ -26,7 +26,7 @@ module.exports = '<!DOCTYPE html>' +
 '</style>' +
 '</head>' +
 '<body>' +
-'<h1>Ask Pebbpe Settings</h1>' +
+'<h1>Ask Pebble Settings</h1>' +
 '<div class="section">' +
 '<label for="apiKey">OpenRouter API key</label>' +
 '<div id="apiKeyStatus" class="api-key-status" style="display:none;">OpenRouter API key saved</div>' +
