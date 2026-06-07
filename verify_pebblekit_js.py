@@ -57,7 +57,10 @@ class MockPebbleKitJS:
             'systemInstruction': '',
             'maxOutputTokens': '300',
             'memoryDepth': '2',
-            'timeoutSeconds': '12'
+            'timeoutSeconds': '12',
+            'includeTimeContext': True,
+            'includeLocationContext': False,
+            'includeHealthContext': False
         }
         
         # 設定保存
@@ -89,7 +92,7 @@ class MockPebbleKitJS:
             return settings['customModelId']
         return settings.get('model', self.defaultSettings['model'])
     
-    def buildSystemInstruction(self, settings):
+    def buildSystemInstruction(self, settings, include_tool_instructions=False):
         """index.js の buildSystemInstruction() 相当"""
         parts = [
             'Answer for a small smartwatch screen. Keep it under 240 characters. Be direct, practical, and easy to scan. The user message is speech-to-text dictation, so infer the intended meaning despite recognition errors, missing punctuation, or unstable wording. If asked your name, answer Pebble. Skip greetings, filler, and markdown unless the user asks for formatting. If uncertain, say so briefly.'
@@ -118,15 +121,20 @@ class MockPebbleKitJS:
         
         if settings.get('systemInstruction'):
             parts.append(settings['systemInstruction'])
+
+        if include_tool_instructions:
+            tools = self.getAvailableTools(settings)
+            if tools:
+                parts.append('If answering requires unavailable device context, respond only with JSON in this exact shape: {"tools":["location","health"],"reason":"brief"}. Use only these tools if needed: ' + ', '.join(tools) + '. You may request multiple tools. If no tool is needed, answer normally without JSON.')
         
         return '\n'.join(parts)
     
-    def buildMessages(self, utterance, settings):
+    def buildMessages(self, utterance, settings, context_text=None, include_tool_instructions=False):
         """index.js の buildMessages() 相当"""
         messages = []
         
         # System instruction
-        system_instruction = self.buildSystemInstruction(settings)
+        system_instruction = self.buildSystemInstruction(settings, include_tool_instructions)
         messages.append({'role': 'system', 'content': system_instruction})
         
         # Conversation memory
@@ -134,11 +142,83 @@ class MockPebbleKitJS:
         max_messages = memory_depth * 2
         recent_messages = self.conversationMemory[-max_messages:] if max_messages > 0 else []
         messages.extend(recent_messages)
+
+        context_parts = []
+        if settings.get('includeTimeContext') is not False:
+            context_parts.append('Time: 2026-06-06 14:35, America/Chicago')
+        if context_text:
+            context_parts.append(context_text)
+        if context_parts:
+            messages.append({'role': 'user', 'content': 'Device context:\n' + '\n'.join(context_parts)})
         
         # User message
         messages.append({'role': 'user', 'content': utterance})
         
         return messages
+
+    def getAvailableTools(self, settings):
+        tools = []
+        if settings.get('includeTimeContext') is not False:
+            tools.append('time')
+        if settings.get('includeLocationContext') is True:
+            tools.append('location')
+        if settings.get('includeHealthContext') is True:
+            tools.append('health')
+        return tools
+
+    def parseToolRequest(self, answer, available_tools):
+        json_text = self.extractJsonText(answer or '')
+        if not json_text:
+            return {'hasJson': False, 'request': None}
+        try:
+            parsed = json.loads(json_text)
+        except Exception:
+            return {'hasJson': True, 'request': None}
+        tools = parsed.get('tools') if isinstance(parsed, dict) else None
+        if not isinstance(tools, list):
+            return {'hasJson': True, 'request': None}
+        allowed = set(available_tools)
+        deduped = []
+        for tool in tools:
+            if not isinstance(tool, str) or tool not in allowed:
+                return {'hasJson': True, 'request': None}
+            if tool not in deduped:
+                deduped.append(tool)
+        if not deduped:
+            return {'hasJson': True, 'request': None}
+        return {'hasJson': True, 'request': {'tools': deduped, 'reason': parsed.get('reason', '')}}
+
+    def extractJsonText(self, text):
+        start = -1
+        for index, char in enumerate(text):
+            if char in '{[':
+                start = index
+                break
+        if start == -1:
+            return ''
+        open_char = text[start]
+        close_char = '}' if open_char == '{' else ']'
+        depth = 0
+        in_string = False
+        escaped = False
+        for index in range(start, len(text)):
+            char = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+            elif char == '"':
+                in_string = True
+            elif char == open_char:
+                depth += 1
+            elif char == close_char:
+                depth -= 1
+                if depth == 0:
+                    return text[start:index + 1]
+        return text[start:]
     
     def truncateAnswer(self, answer, max_chars=240, max_bytes=768):
         """index.js の truncateAnswer() 相当"""
@@ -364,8 +444,46 @@ def test_system_instruction():
     settings['systemInstruction'] = 'Be extra friendly.'
     instruction = pkjs.buildSystemInstruction(settings)
     assert 'Be extra friendly.' in instruction, "Should include custom instruction"
+
+    # Tool instruction only on first call
+    settings['includeLocationContext'] = True
+    settings['includeHealthContext'] = True
+    instruction = pkjs.buildSystemInstruction(settings, include_tool_instructions=True)
+    assert '"tools"' in instruction, "Should include pseudo tool schema on first call"
+    assert 'location' in instruction and 'health' in instruction, "Should list enabled tools"
+    instruction = pkjs.buildSystemInstruction(settings, include_tool_instructions=False)
+    assert '"tools"' not in instruction, "Should omit pseudo tool schema on second call"
     
     print("  [PASS] System instruction built correctly")
+
+
+def test_tool_request_parsing():
+    """擬似 tool request parsing のテスト"""
+    print("\n--- Test: Tool Request Parsing ---")
+
+    pkjs = MockPebbleKitJS('test-key')
+    settings = pkjs.getSettings()
+    settings['includeLocationContext'] = True
+    settings['includeHealthContext'] = True
+    available_tools = pkjs.getAvailableTools(settings)
+
+    parsed = pkjs.parseToolRequest('{"tools":["location","health"],"reason":"weather"}', available_tools)
+    assert parsed['hasJson'] is True, "Should detect JSON"
+    assert parsed['request']['tools'] == ['location', 'health'], "Should parse multiple tools"
+
+    parsed = pkjs.parseToolRequest('Need context: {"tools":["health"],"reason":"steps"}', available_tools)
+    assert parsed['request']['tools'] == ['health'], "Should parse embedded JSON"
+
+    parsed = pkjs.parseToolRequest('普通の回答です', available_tools)
+    assert parsed['hasJson'] is False, "Should not treat normal text as tool request"
+
+    parsed = pkjs.parseToolRequest('{"tools":["calendar"],"reason":"schedule"}', available_tools)
+    assert parsed['hasJson'] is True and parsed['request'] is None, "Unknown tool should fail closed"
+
+    parsed = pkjs.parseToolRequest('{"tool":"location"}', available_tools)
+    assert parsed['hasJson'] is True and parsed['request'] is None, "Invalid schema should fail closed"
+
+    print("  [PASS] Tool request parsing works correctly")
 
 
 def test_conversation_memory():
@@ -400,6 +518,7 @@ def test_conversation_memory_disabled():
     pkjs = MockPebbleKitJS('test-key')
     settings = pkjs.getSettings()
     settings['memoryDepth'] = '0'
+    settings['includeTimeContext'] = False
     pkjs.localStorage.setItem('ask_pebbpe_settings', json.dumps(settings))
 
     pkjs.conversationMemory = [
@@ -502,6 +621,7 @@ def main():
     # ロジックテスト（API 不要）
     test_settings_management()
     test_system_instruction()
+    test_tool_request_parsing()
     test_conversation_memory()
     test_conversation_memory_disabled()
     test_truncate_answer()

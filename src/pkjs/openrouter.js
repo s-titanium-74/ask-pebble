@@ -61,6 +61,14 @@ module.exports = {
       messages: messages,
       max_tokens: maxTokens
     };
+
+    if (model.indexOf('openai/gpt-5') === 0) {
+      payload.reasoning = {
+        effort: 'minimal',
+        exclude: true
+      };
+      payload.reasoning_effort = 'minimal';
+    }
     
     if (model === 'openai/gpt-oss-20b') {
       payload.provider = {

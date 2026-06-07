@@ -10,6 +10,7 @@ module.exports = '<!DOCTYPE html>' +
 '.section { background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px; }' +
 'label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }' +
 'input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 12px; font-size: 14px; }' +
+'label input[type="checkbox"] { width: auto; margin-right: 8px; }' +
 '.api-key-status { color: #2e7d32; font-size: 13px; margin-bottom: 8px; }' +
 '.provider-info { background: #f0f0f0; padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }' +
 '.provider-info p { margin: 4px 0; }' +
@@ -55,6 +56,10 @@ module.exports = '<!DOCTYPE html>' +
 '<p class="note">Controls AI answer language only. Dictation language follows your phone system language.</p>' +
 '<label for="systemInstruction">System instruction</label>' +
 '<textarea id="systemInstruction" rows="3" placeholder="Optional custom instruction"></textarea>' +
+'<label><input type="checkbox" id="includeTimeContext">Include time context</label>' +
+'<label><input type="checkbox" id="includeLocationContext">Include location context</label>' +
+'<label><input type="checkbox" id="includeHealthContext">Include health context</label>' +
+'<p class="note">Location and health are used only when the model asks for them.</p>' +
 '<label for="model">Recommended model</label>' +
 '<select id="model">' +
 '<option value="openai/gpt-oss-20b" selected>Speed (Groq GPT-OSS 20B)</option>' +
@@ -98,6 +103,9 @@ module.exports = '<!DOCTYPE html>' +
 'if (settings.model) document.getElementById("model").value = settings.model;' +
 'if (settings.customModelId) { document.getElementById("customModelId").value = settings.customModelId; document.getElementById("customModelStatus").style.display = "block"; }' +
 'if (settings.systemInstruction) document.getElementById("systemInstruction").value = settings.systemInstruction;' +
+'document.getElementById("includeTimeContext").checked = settings.includeTimeContext !== false;' +
+'document.getElementById("includeLocationContext").checked = settings.includeLocationContext === true;' +
+'document.getElementById("includeHealthContext").checked = settings.includeHealthContext === true;' +
 'if (settings.maxOutputTokens) document.getElementById("maxOutputTokens").value = settings.maxOutputTokens;' +
 'if (settings.memoryDepth) document.getElementById("memoryDepth").value = settings.memoryDepth;' +
 'if (settings.timeoutSeconds) document.getElementById("timeoutSeconds").value = settings.timeoutSeconds;' +
@@ -105,7 +113,7 @@ module.exports = '<!DOCTYPE html>' +
 'var apiKeyDeletedFlag = false;' +
 'function deleteApiKey() { if (confirm("Delete your OpenRouter API key and conversation memory?")) { apiKeyDeletedFlag = true; memoryResetFlag = true; document.getElementById("apiKey").value = ""; document.getElementById("apiKeyStatus").style.display = "none"; } }' +
 'var memoryResetFlag = false; function resetMemory() { memoryResetFlag = true; alert("Memory reset"); }' +
-'function save() { var resetFlag = memoryResetFlag; memoryResetFlag = false; var apiKeyValue = document.getElementById("apiKey").value.trim(); var deleteFlag = apiKeyDeletedFlag && !apiKeyValue; apiKeyDeletedFlag = false; var newSettings = { apiKey: apiKeyValue, apiKeyDeleted: deleteFlag, language: document.getElementById("language").value, model: document.getElementById("model").value, customModelId: document.getElementById("customModelId").value.trim(), systemInstruction: document.getElementById("systemInstruction").value.trim(), maxOutputTokens: document.getElementById("maxOutputTokens").value, memoryDepth: document.getElementById("memoryDepth").value, timeoutSeconds: document.getElementById("timeoutSeconds").value, memoryReset: resetFlag }; window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(newSettings)); }' +
+'function save() { var resetFlag = memoryResetFlag; memoryResetFlag = false; var apiKeyValue = document.getElementById("apiKey").value.trim(); var deleteFlag = apiKeyDeletedFlag && !apiKeyValue; apiKeyDeletedFlag = false; var newSettings = { apiKey: apiKeyValue, apiKeyDeleted: deleteFlag, language: document.getElementById("language").value, model: document.getElementById("model").value, customModelId: document.getElementById("customModelId").value.trim(), systemInstruction: document.getElementById("systemInstruction").value.trim(), includeTimeContext: document.getElementById("includeTimeContext").checked, includeLocationContext: document.getElementById("includeLocationContext").checked, includeHealthContext: document.getElementById("includeHealthContext").checked, maxOutputTokens: document.getElementById("maxOutputTokens").value, memoryDepth: document.getElementById("memoryDepth").value, timeoutSeconds: document.getElementById("timeoutSeconds").value, memoryReset: resetFlag }; window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(newSettings)); }' +
 '<\/script>' +
 '</body>' +
 '</html>';

@@ -91,6 +91,10 @@
       border-color: var(--pink);
       box-shadow: 0 0 0 3px rgba(255, 127, 154, 0.18);
     }
+    label input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
     .api-key-status {
       color: #23795f;
       font-size: 13px;
@@ -203,6 +207,20 @@
 
     <label for="systemInstruction">System instruction</label>
     <textarea id="systemInstruction" rows="3" placeholder="Optional custom instruction"></textarea>
+
+    <label>
+      <input type="checkbox" id="includeTimeContext">
+      Include time context
+    </label>
+    <label>
+      <input type="checkbox" id="includeLocationContext">
+      Include location context
+    </label>
+    <label>
+      <input type="checkbox" id="includeHealthContext">
+      Include health context
+    </label>
+    <p class="note">Location and health are used only when the model asks for them.</p>
     
     <label for="model">Recommended model</label>
     <select id="model">
@@ -269,6 +287,9 @@
       document.getElementById('customModelStatus').style.display = 'block';
     }
     if (settings.systemInstruction) document.getElementById('systemInstruction').value = settings.systemInstruction;
+    document.getElementById('includeTimeContext').checked = settings.includeTimeContext !== false;
+    document.getElementById('includeLocationContext').checked = settings.includeLocationContext === true;
+    document.getElementById('includeHealthContext').checked = settings.includeHealthContext === true;
     if (settings.maxOutputTokens) document.getElementById('maxOutputTokens').value = settings.maxOutputTokens;
     if (settings.memoryDepth) document.getElementById('memoryDepth').value = settings.memoryDepth;
     if (settings.timeoutSeconds) document.getElementById('timeoutSeconds').value = settings.timeoutSeconds;
@@ -308,6 +329,9 @@
         model: document.getElementById('model').value,
         customModelId: document.getElementById('customModelId').value.trim(),
         systemInstruction: document.getElementById('systemInstruction').value.trim(),
+        includeTimeContext: document.getElementById('includeTimeContext').checked,
+        includeLocationContext: document.getElementById('includeLocationContext').checked,
+        includeHealthContext: document.getElementById('includeHealthContext').checked,
         maxOutputTokens: document.getElementById('maxOutputTokens').value,
         memoryDepth: document.getElementById('memoryDepth').value,
         timeoutSeconds: document.getElementById('timeoutSeconds').value,

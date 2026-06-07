@@ -346,6 +346,7 @@ System instruction is composed from:
 1. Base Pebble instruction.
 2. Language instruction.
 3. Optional custom system instruction.
+4. Optional pseudo tool instruction, only on the first LLM call for a user turn.
 
 Base instruction:
 
@@ -375,6 +376,28 @@ Custom system instruction:
 - Empty value is allowed.
 - If empty, use only base instruction plus language instruction.
 - If non-empty, append it after the base and language instructions.
+
+Pseudo tool instruction:
+
+- Only included in the first LLM request for a user turn.
+- Enabled tools are based on settings: `time`, `location`, `health`.
+- If context is needed, the model must return JSON only, for example `{"tools":["location","health"],"reason":"brief"}`.
+- The first request is a combined answer-or-tool request, not a separate standalone router request.
+- If the first response contains JSON that cannot be parsed as a valid tool request, PebbleKit JS treats tool use as failed and makes one second LLM request without extra context.
+- The second LLM request never includes tool instructions. Tool requests in the second response are ignored and displayed as normal answer text.
+- A user turn is limited to at most two LLM requests.
+
+Decision record:
+
+- Standalone router mode was tested and rejected because `openai/gpt-5-mini` misclassified health-context requests as requiring no tools.
+- Combined answer-or-tool mode passed verification for Speed, Balance, and Quality candidates after GPT-5 reasoning suppression was added.
+
+Device context:
+
+- Time context is enabled by default and is included as short device context.
+- Location and health context are disabled by default and are fetched only if enabled and requested by the first LLM response.
+- Health context is fetched by the watchapp C code through `HealthService`, then returned to PebbleKit JS through AppMessage.
+- Initial health fields: `stepsToday`, `activeMinutesToday`, `sleepTodayMinutes`, `restfulSleepTodayMinutes`.
 
 ### 5.7 Advanced Value Ranges
 
@@ -406,6 +429,7 @@ Request types:
 - `key_state`
 - `ask`
 - `cancel`
+- `health_context`
 
 Examples:
 
@@ -431,6 +455,13 @@ Examples:
 }
 ```
 
+```json
+{
+  "type": "health_context",
+  "requestId": 2
+}
+```
+
 ### 6.2 Response Type
 
 AppMessage responses include `type`.
@@ -440,6 +471,7 @@ Response types:
 - `key_state`
 - `answer`
 - `error`
+- `health_context`
 
 Examples:
 

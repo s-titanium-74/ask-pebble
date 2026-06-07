@@ -8,7 +8,10 @@ var defaultSettings = {
   systemInstruction: '',
   maxOutputTokens: '300',
   memoryDepth: '2',
-  timeoutSeconds: '12'
+  timeoutSeconds: '12',
+  includeTimeContext: true,
+  includeLocationContext: false,
+  includeHealthContext: false
 };
 
 module.exports = {

@@ -8,7 +8,12 @@ enum {
   KEY_ANSWER = 5,
   KEY_ERROR_CODE = 6,
   KEY_MESSAGE = 7,
-  KEY_HAS_API_KEY = 8
+  KEY_HAS_API_KEY = 8,
+  KEY_STEPS_TODAY = 9,
+  KEY_ACTIVE_MINUTES_TODAY = 10,
+  KEY_SLEEP_TODAY_MINUTES = 11,
+  KEY_RESTFUL_SLEEP_TODAY_MINUTES = 12,
+  KEY_HEALTH_AVAILABLE = 13
 };
 
 typedef enum {
@@ -84,6 +89,7 @@ static void set_state(AppState state);
 static void send_key_state_request(void);
 static void send_ask_request(const char *utterance);
 static void send_cancel_request(void);
+static void send_health_context_response(uint32_t request_id);
 static void inbox_received_callback(DictionaryIterator *iterator, void *context);
 static void inbox_dropped_callback(AppMessageResult reason, void *context);
 static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context);
@@ -305,6 +311,9 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
       set_text(message_tuple->value->cstring, NULL);
     }
   }
+  else if (strcmp(type, "health_context") == 0) {
+    send_health_context_response(request_id);
+  }
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
@@ -352,6 +361,54 @@ static void send_cancel_request(void) {
   if (result == APP_MSG_OK) {
     dict_write_cstring(iter, KEY_TYPE, "cancel");
     dict_write_uint32(iter, KEY_REQUEST_ID, s_current_request_id);
+    send_app_message(iter);
+  }
+}
+
+static int32_t metric_sum_today(HealthMetric metric, bool *available) {
+#if defined(PBL_HEALTH)
+  HealthServiceAccessibilityMask mask = health_service_metric_accessible(metric, time_start_of_today(), time(NULL));
+  if (!(mask & HealthServiceAccessibilityMaskAvailable)) {
+    *available = false;
+    return 0;
+  }
+  *available = true;
+  return health_service_sum_today(metric);
+#else
+  *available = false;
+  return 0;
+#endif
+}
+
+static void send_health_context_response(uint32_t request_id) {
+  DictionaryIterator *iter;
+  AppMessageResult result = app_message_outbox_begin(&iter);
+  if (result == APP_MSG_OK) {
+    bool steps_available = false;
+    bool active_available = false;
+    bool sleep_available = false;
+    bool restful_available = false;
+    int32_t steps = metric_sum_today(HealthMetricStepCount, &steps_available);
+    int32_t active_seconds = metric_sum_today(HealthMetricActiveSeconds, &active_available);
+    int32_t sleep_seconds = metric_sum_today(HealthMetricSleepSeconds, &sleep_available);
+    int32_t restful_seconds = metric_sum_today(HealthMetricSleepRestfulSeconds, &restful_available);
+
+    dict_write_cstring(iter, KEY_TYPE, "health_context");
+    dict_write_uint32(iter, KEY_REQUEST_ID, request_id);
+    dict_write_uint8(iter, KEY_HEALTH_AVAILABLE,
+                    steps_available || active_available || sleep_available || restful_available);
+    if (steps_available) {
+      dict_write_int32(iter, KEY_STEPS_TODAY, steps);
+    }
+    if (active_available) {
+      dict_write_int32(iter, KEY_ACTIVE_MINUTES_TODAY, active_seconds / 60);
+    }
+    if (sleep_available) {
+      dict_write_int32(iter, KEY_SLEEP_TODAY_MINUTES, sleep_seconds / 60);
+    }
+    if (restful_available) {
+      dict_write_int32(iter, KEY_RESTFUL_SLEEP_TODAY_MINUTES, restful_seconds / 60);
+    }
     send_app_message(iter);
   }
 }

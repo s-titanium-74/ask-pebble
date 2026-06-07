@@ -21,6 +21,8 @@
     },
     "capabilities": [
       "configurable",
+      "health",
+      "location",
       "microphone"
     ],
     "messageKeys": {
@@ -31,7 +33,12 @@
       "answer": 5,
       "errorCode": 6,
       "message": 7,
-      "hasApiKey": 8
+      "hasApiKey": 8,
+      "stepsToday": 9,
+      "activeMinutesToday": 10,
+      "sleepTodayMinutes": 11,
+      "restfulSleepTodayMinutes": 12,
+      "healthAvailable": 13
     },
     "resources": {
       "media": [
