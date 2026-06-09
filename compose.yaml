@@ -1,6 +1,9 @@
 services:
   pebble-sdk:
-    image: rebble/pebble-sdk@sha256:ac6284b9764bfadc9ced945e95a84cdbaa23736ea14323655e6dafc5938dcaf3
+    build:
+      context: .
+      dockerfile: Dockerfile.pebble-sdk
+    image: ask-pebble-sdk:4.9.169
     working_dir: /pebble
     volumes:
       - .:/pebble

@@ -16,37 +16,30 @@ docker compose run --rm pebble-sdk
 
 The `pebble-sdk` service is defined in `compose.yaml`. It:
 
-- uses the Rebble Pebble SDK Docker image
-- pins the image by digest for reproducibility
+- builds `Dockerfile.pebble-sdk`
+- installs Core/RePebble `pebble-tool`
+- installs Pebble SDK `4.9.169`
 - mounts this repository at `/pebble`
 - runs `pebble build` in `/pebble`
 
-## Pinned SDK Image
+## SDK Image
 
-`compose.yaml` currently uses:
+`compose.yaml` builds a local image:
 
 ```text
-rebble/pebble-sdk@sha256:ac6284b9764bfadc9ced945e95a84cdbaa23736ea14323655e6dafc5938dcaf3
+ask-pebble-sdk:4.9.169
 ```
 
-This avoids silently changing compiler behavior when the `latest` tag is updated upstream.
+The image is built from `Dockerfile.pebble-sdk` because the older
+`rebble/pebble-sdk` Docker image does not include the `flint` platform needed
+for Pebble 2 Duo.
 
-To intentionally update the SDK image:
+To intentionally update the SDK version:
 
-1. Pull the current image.
-
-   ```sh
-   docker pull rebble/pebble-sdk:latest
-   ```
-
-2. Inspect the digest.
-
-   ```sh
-   docker image inspect rebble/pebble-sdk:latest --format '{{json .RepoDigests}}'
-   ```
-
-3. Replace the digest in `compose.yaml`.
-4. Rebuild and verify that `build/pebble.pbw` is produced.
+1. Change the `pebble sdk install` version in `Dockerfile.pebble-sdk`.
+2. Change the local image tag in `compose.yaml`.
+3. Rebuild and verify that `build/pebble.pbw` contains both `flint/` and
+   `emery/` platform directories.
 
 ## Direct Docker Command
 
@@ -56,7 +49,7 @@ If Docker Compose is not available, this is the equivalent direct command:
 docker run --rm \
   -v "$PWD:/pebble" \
   -w /pebble \
-  rebble/pebble-sdk@sha256:ac6284b9764bfadc9ced945e95a84cdbaa23736ea14323655e6dafc5938dcaf3 \
+  ask-pebble-sdk:4.9.169 \
   pebble build
 ```
 
@@ -72,10 +65,11 @@ The build uses:
 
 Configured target platforms are:
 
-- `aplite`
-- `basalt`
-- `chalk`
-- `diorite`
+- `flint`
+- `emery`
+
+`flint` is the Pebble SDK platform for Pebble 2 Duo. `emery` is the Pebble SDK
+platform for Pebble Time 2.
 
 ## Clean Build
 
@@ -98,4 +92,5 @@ build/pebble.pbw
 
 For public release uploads, use `ask-pebble.pbw` as the published filename.
 
-You can also check the generated platform directories under `build/aplite`, `build/basalt`, `build/chalk`, and `build/diorite`.
+You can also check the generated platform directories under `build/flint` and
+`build/emery`.

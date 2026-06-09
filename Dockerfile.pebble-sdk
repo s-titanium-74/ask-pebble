@@ -1,0 +1,25 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/root/.local/bin:${PATH}"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        libglib2.0-0 \
+        libpixman-1-0 \
+        libsdl2-2.0-0 \
+        libsndio7.0 \
+        nodejs \
+        npm \
+        zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+RUN uv tool install pebble-tool --python 3.13
+RUN pebble sdk install 4.9.169
+
+WORKDIR /pebble
+CMD ["pebble", "build"]

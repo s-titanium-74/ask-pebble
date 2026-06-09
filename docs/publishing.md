@@ -2,15 +2,32 @@
 
 Ask Pebble should be published as an experimental Android-only BYOK app.
 
+## Store / Portal
+
+- Upload portal: https://dev-portal.rebble.io/
+- Store name to use in user-facing copy: Rebble store
+- Compatibility wording: Pebble watchapp / Pebble appstore is still used in
+  Rebble documentation, but new releases are managed through the Rebble
+  Developer Portal.
+- Ecosystem note: Core Devices also has a Pebble app/appstore feed at
+  https://apps.repebble.com/ and developer docs at
+  https://developer.repebble.com/. Rebble announced in October 2025 that
+  uploads through the Rebble Developer Portal should appear in both appstores,
+  but the Core/Rebble appstore relationship has changed publicly since then.
+  For first release, publish through Rebble first, then verify visibility in
+  the Core Pebble app / apps.repebble.com and submit or claim there separately
+  only if needed.
+
 ## App Metadata
 
 - App name: Ask Pebble
 - Author: Katsuya Ohta
 - Platform: Pebble watchapp
+- Category: Tools & Utilities
 - Primary phone OS: Android
 - Provider: OpenRouter
 - Auth model: BYOK
-- Primary target: Pebble Time 2
+- Supported platforms: Flint / Pebble 2 Duo, Emery / Pebble Time 2
 
 ## Short Store Description
 
