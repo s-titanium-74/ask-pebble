@@ -39,12 +39,10 @@ Pebble.addEventListener('webviewclosed', function(e) {
     var newSettings = JSON.parse(decodeURIComponent(e.response));
     var oldSettings = config.getSettings();
     
+    config.mergeSavedSettings(oldSettings, newSettings);
+
     if (newSettings.apiKeyDeleted) {
-      newSettings.apiKey = '';
       conversationMemory = [];
-    } else if (!newSettings.apiKey && oldSettings.apiKey) {
-      // Preserve existing API key if the masked input was left blank.
-      newSettings.apiKey = oldSettings.apiKey;
     }
     
     config.saveSettings(newSettings);
