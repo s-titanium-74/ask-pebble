@@ -1,10 +1,17 @@
-FROM ubuntu:24.04
+FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 
+ARG APT_SNAPSHOT=20260719T000000Z
+ARG UV_VERSION=0.11.29
+ARG PEBBLE_TOOL_VERSION=5.0.39
+ARG PYTHON_VERSION=3.13.14
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/root/.local/bin:${PATH}"
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && printf 'APT::Snapshot "%s";\n' "${APT_SNAPSHOT}" > /etc/apt/apt.conf.d/50snapshot \
+    && apt-get update \
+    && apt-get install -y --reinstall --allow-downgrades --no-install-recommends \
         ca-certificates \
         curl \
         libglib2.0-0 \
@@ -16,9 +23,9 @@ RUN apt-get update \
         zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" | sh
 
-RUN uv tool install pebble-tool --python 3.13
+RUN uv tool install "pebble-tool==${PEBBLE_TOOL_VERSION}" --python "${PYTHON_VERSION}"
 RUN pebble sdk install 4.9.169
 
 WORKDIR /pebble

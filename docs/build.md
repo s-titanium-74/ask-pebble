@@ -34,18 +34,26 @@ The image is built from `Dockerfile.pebble-sdk` because the older
 `rebble/pebble-sdk` Docker image does not include the `flint` platform needed
 for Pebble 2 Duo.
 
+The Dockerfile pins the Ubuntu base image, Ubuntu package snapshot, uv,
+Pebble Tool, Python, and Pebble SDK versions so release builds use the same
+toolchain. Update these pins deliberately when refreshing the build image.
+
 To intentionally update the SDK version:
 
-1. Change the `pebble sdk install` version in `Dockerfile.pebble-sdk`.
+1. Change the pinned values at the top of `Dockerfile.pebble-sdk` and the
+   `pebble sdk install` version together.
 2. Change the local image tag in `compose.yaml`.
 3. Rebuild and verify that `build/pebble.pbw` contains both `flint/` and
    `emery/` platform directories.
 
 ## Direct Docker Command
 
-If Docker Compose is not available, this is the equivalent direct command:
+If Docker Compose is not available, build the local SDK image first, then run
+the equivalent command:
 
 ```sh
+docker build -f Dockerfile.pebble-sdk -t ask-pebble-sdk:4.9.169 .
+
 docker run --rm \
   -v "$PWD:/pebble" \
   -w /pebble \

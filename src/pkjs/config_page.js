@@ -110,7 +110,7 @@ module.exports = '<!DOCTYPE html>' +
 '  openai: [{ value: "gpt-5.4-nano", label: "Fastest / lowest cost (GPT-5.4 Nano)" }, { value: "gpt-5.4-mini", label: "Standard (GPT-5.4 Mini)" }, { value: "gpt-5.6-luna", label: "Quality (GPT-5.6 Luna)" }]' +
 '};' +
 'try { var hash = window.location.hash.substring(1); if (hash) { settings = JSON.parse(decodeURIComponent(hash)); } } catch (e) {}' +
-'if (settings.apiKey) { document.getElementById("apiKeyStatus").style.display = "block"; document.getElementById("apiKey").value = ""; }' +
+'if (settings.hasApiKey) { document.getElementById("apiKeyStatus").style.display = "block"; document.getElementById("apiKey").value = ""; }' +
 'if (settings.language) document.getElementById("language").value = settings.language;' +
 'if (settings.systemInstruction) document.getElementById("systemInstruction").value = settings.systemInstruction;' +
 'document.getElementById("includeTimeContext").checked = settings.includeTimeContext !== false;' +
@@ -122,8 +122,11 @@ module.exports = '<!DOCTYPE html>' +
 'document.getElementById("endpointProfile").value = settings.endpointProfile || "openrouter";' +
 'document.getElementById("customBaseUrl").value = settings.customBaseUrl || "";' +
 'document.getElementById("customModelId").value = settings.customModelId || "";' +
+'var initialProfile = settings.endpointProfile || "openrouter";' +
+'var initialCustomBaseUrl = (settings.customBaseUrl || "").trim();' +
+'function defaultModel(profile) { return profile === "openai" ? "gpt-5.4-mini" : "openai/gpt-5.4-mini"; }' +
 'function populateModels(profile) {' +
-'  var select = document.getElementById("model"); var current = settings.model || (profile === "openai" ? "gpt-5.4-mini" : "openai/gpt-5.4-mini"); var options = modelOptions[profile] || [];' +
+'  var select = document.getElementById("model"); var current = profile === initialProfile ? (settings.model || defaultModel(profile)) : defaultModel(profile); var options = modelOptions[profile] || [];' +
 '  select.innerHTML = ""; var found = false;' +
 '  for (var i = 0; i < options.length; i++) { var option = document.createElement("option"); option.value = options[i].value; option.text = options[i].label; if (option.value === current) { option.selected = true; found = true; } select.appendChild(option); }' +
 '  if (!found && current) { var legacy = document.createElement("option"); legacy.value = current; legacy.text = "Current saved model: " + current; legacy.selected = true; select.appendChild(legacy); }' +
@@ -140,6 +143,7 @@ module.exports = '<!DOCTYPE html>' +
 '  if (profile === "openrouter") { info.innerHTML = "<p><strong>Provider:</strong> OpenRouter</p><p><strong>Endpoint:</strong> OpenAI-compatible Chat Completions</p>"; }' +
 '  else if (profile === "openai") { info.innerHTML = "<p><strong>Provider:</strong> OpenAI API</p><p><strong>Endpoint:</strong> Chat Completions</p>"; }' +
 '  else { info.innerHTML = "<p><strong>Provider:</strong> Custom OpenAI-compatible API</p><p><strong>Endpoint:</strong> Full URL entered above</p>"; }' +
+'  if (profile !== initialProfile) { document.getElementById("apiKeyStatus").style.display = "none"; document.getElementById("customModelId").value = ""; }' +
 '  if (!custom) populateModels(profile);' +
 '}' +
 'updateEndpointUI();' +
@@ -149,9 +153,12 @@ module.exports = '<!DOCTYPE html>' +
 'var memoryResetFlag = false; function resetMemory() { memoryResetFlag = true; alert("Memory reset"); }' +
 'function save() {' +
 '  var profile = document.getElementById("endpointProfile").value; var customBaseUrl = document.getElementById("customBaseUrl").value.trim(); var customModelId = document.getElementById("customModelId").value.trim();' +
+'  var endpointChanged = profile !== initialProfile || (profile === "custom" && customBaseUrl !== initialCustomBaseUrl);' +
 '  if (profile === "custom" && customBaseUrl.indexOf("https://") !== 0) { alert("Enter a complete HTTPS Chat Completions URL."); return; }' +
 '  if (profile === "custom" && !customModelId) { alert("Enter a model ID for the custom endpoint."); return; }' +
 '  var resetFlag = memoryResetFlag; memoryResetFlag = false; var apiKeyValue = document.getElementById("apiKey").value.trim(); var deleteFlag = apiKeyDeletedFlag && !apiKeyValue; apiKeyDeletedFlag = false;' +
+'  if (endpointChanged && !apiKeyValue) { alert("Enter an API key for the selected endpoint."); return; }' +
+'  if (endpointChanged && profile !== "custom") { customModelId = ""; }' +
 '  var newSettings = { apiKey: apiKeyValue, apiKeyDeleted: deleteFlag, endpointProfile: profile, customBaseUrl: customBaseUrl, language: document.getElementById("language").value, model: profile === "custom" ? "" : document.getElementById("model").value, customModelId: customModelId, systemInstruction: document.getElementById("systemInstruction").value.trim(), includeTimeContext: document.getElementById("includeTimeContext").checked, includeLocationContext: document.getElementById("includeLocationContext").checked, includeHealthContext: document.getElementById("includeHealthContext").checked, maxOutputTokens: document.getElementById("maxOutputTokens").value, memoryDepth: document.getElementById("memoryDepth").value, timeoutSeconds: document.getElementById("timeoutSeconds").value, memoryReset: resetFlag };' +
 '  window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(newSettings));' +
 '}' +

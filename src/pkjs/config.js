@@ -75,6 +75,28 @@ module.exports = {
     return endpointUrls.openrouter;
   },
 
+  getEndpointIdentity: function(settings) {
+    settings = settings || this.getSettings();
+    var profile = settings.endpointProfile || defaultSettings.endpointProfile;
+    if (profile === 'custom') {
+      return 'custom:' + (settings.customBaseUrl || '').trim();
+    }
+    return profile;
+  },
+
+  shouldPreserveApiKey: function(oldSettings, newSettings) {
+    return this.getEndpointIdentity(oldSettings) === this.getEndpointIdentity(newSettings);
+  },
+
+  mergeSavedSettings: function(oldSettings, newSettings) {
+    if (newSettings.apiKeyDeleted) {
+      newSettings.apiKey = '';
+    } else if (!newSettings.apiKey && oldSettings.apiKey && this.shouldPreserveApiKey(oldSettings, newSettings)) {
+      newSettings.apiKey = oldSettings.apiKey;
+    }
+    return newSettings;
+  },
+
   deleteApiKey: function() {
     var settings = this.getSettings();
     settings.apiKey = '';
@@ -85,7 +107,14 @@ module.exports = {
     var base64Html = btoa(require('./config_page'));
     var url = 'data:text/html;base64,' + base64Html;
     if (settings) {
-      url += '#' + encodeURIComponent(JSON.stringify(settings));
+      var pageSettings = {};
+      for (var key in settings) {
+        if (key !== 'apiKey') {
+          pageSettings[key] = settings[key];
+        }
+      }
+      pageSettings.hasApiKey = !!settings.apiKey;
+      url += '#' + encodeURIComponent(JSON.stringify(pageSettings));
     }
     return url;
   }
