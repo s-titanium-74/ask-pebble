@@ -23,19 +23,27 @@ module.exports = '<!DOCTYPE html>' +
 '.advanced { display: none; }' +
 '.advanced.visible { display: block; }' +
 '.note { font-size: 12px; color: #666; margin-top: 8px; }' +
+'.hidden { display: none; }' +
 '</style>' +
 '</head>' +
 '<body>' +
 '<h1>Ask Pebble Settings</h1>' +
 '<div class="section">' +
-'<label for="apiKey">OpenRouter API key</label>' +
-'<div id="apiKeyStatus" class="api-key-status" style="display:none;">OpenRouter API key saved</div>' +
-'<input type="text" id="apiKey" placeholder="Enter your OpenRouter API key">' +
-'<div class="provider-info">' +
-'<p><strong>Provider:</strong> OpenRouter</p>' +
-'<p><strong>Routing:</strong> Model-specific</p>' +
-'<p><strong>Speed route:</strong> Groq only</p>' +
+'<label for="endpointProfile">API endpoint</label>' +
+'<select id="endpointProfile" onchange="updateEndpointUI()">' +
+'<option value="openrouter">OpenRouter</option>' +
+'<option value="openai">OpenAI API</option>' +
+'<option value="custom">Custom OpenAI-compatible API</option>' +
+'</select>' +
+'<div id="customBaseUrlRow" class="hidden">' +
+'<label for="customBaseUrl">Chat Completions URL</label>' +
+'<input type="url" id="customBaseUrl" placeholder="https://…/chat/completions">' +
+'<p class="note">Enter the complete HTTPS Chat Completions URL. Use this for Cloudflare AI Gateway and other compatible APIs.</p>' +
 '</div>' +
+'<label for="apiKey">API key</label>' +
+'<div id="apiKeyStatus" class="api-key-status" style="display:none;">API key saved</div>' +
+'<input type="text" id="apiKey" placeholder="Enter your API key">' +
+'<div id="providerInfo" class="provider-info"></div>' +
 '<label for="language">Response language</label>' +
 '<select id="language">' +
 '<option value="Auto" selected>Auto</option>' +
@@ -60,23 +68,23 @@ module.exports = '<!DOCTYPE html>' +
 '<label><input type="checkbox" id="includeLocationContext">Include location context</label>' +
 '<label><input type="checkbox" id="includeHealthContext">Include health context</label>' +
 '<p class="note">Location and health are used only when the model asks for them.</p>' +
+'<div id="recommendedModelRow">' +
 '<label for="model">Recommended model</label>' +
-'<select id="model">' +
-'<option value="openai/gpt-oss-20b" selected>Speed (Groq GPT-OSS 20B)</option>' +
-'<option value="openai/gpt-5-mini">Balance (GPT-5 Mini)</option>' +
-'<option value="anthropic/claude-haiku-4.5">Quality (Claude Haiku 4.5)</option>' +
-'</select>' +
+'<select id="model"></select>' +
+'</div>' +
+'<label id="customModelLabel" for="customModelId">Custom model id</label>' +
+'<input type="text" id="customModelId" placeholder="Optional: override recommended model">' +
+'<p id="customModelNote" class="note">Use this to select a model not listed above.</p>' +
+'<div id="openRouterLinks">' +
 '<button class="link-btn" onclick="window.open(\'https://openrouter.ai/settings/keys\', \'_blank\')">Create OpenRouter API key</button>' +
 '<button class="link-btn" onclick="window.open(\'https://openrouter.ai/settings/credits\', \'_blank\')">Check credits / usage</button>' +
-'<button class="delete-btn" onclick="deleteApiKey()">Delete OpenRouter API key</button>' +
+'</div>' +
+'<button class="delete-btn" onclick="deleteApiKey()">Delete API key</button>' +
 '<button class="reset-btn" onclick="resetMemory()">Reset conversation memory</button>' +
 '</div>' +
 '<div class="section">' +
 '<span class="advanced-toggle" onclick="toggleAdvanced()">Advanced settings</span>' +
 '<div class="advanced" id="advancedSection">' +
-'<label for="customModelId">Custom model id</label>' +
-'<input type="text" id="customModelId" placeholder="Optional: override dropdown model">' +
-'<div id="customModelStatus" style="display:none; color:#1976d2; font-size:13px; margin-bottom:8px;">Using custom model</div>' +
 '<label for="maxOutputTokens">Max output tokens</label>' +
 '<select id="maxOutputTokens">' +
 '<option value="128">128</option>' +
@@ -97,11 +105,13 @@ module.exports = '<!DOCTYPE html>' +
 '<button class="save-btn" onclick="save()">Save</button>' +
 '<script>' +
 'var settings = {};' +
+'var modelOptions = {' +
+'  openrouter: [{ value: "openai/gpt-5.4-nano", label: "Fastest / lowest cost (GPT-5.4 Nano)" }, { value: "openai/gpt-5.4-mini", label: "Standard (GPT-5.4 Mini)" }, { value: "openai/gpt-5.6-luna", label: "Quality (GPT-5.6 Luna)" }],' +
+'  openai: [{ value: "gpt-5.4-nano", label: "Fastest / lowest cost (GPT-5.4 Nano)" }, { value: "gpt-5.4-mini", label: "Standard (GPT-5.4 Mini)" }, { value: "gpt-5.6-luna", label: "Quality (GPT-5.6 Luna)" }]' +
+'};' +
 'try { var hash = window.location.hash.substring(1); if (hash) { settings = JSON.parse(decodeURIComponent(hash)); } } catch (e) {}' +
 'if (settings.apiKey) { document.getElementById("apiKeyStatus").style.display = "block"; document.getElementById("apiKey").value = ""; }' +
 'if (settings.language) document.getElementById("language").value = settings.language;' +
-'if (settings.model) document.getElementById("model").value = settings.model;' +
-'if (settings.customModelId) { document.getElementById("customModelId").value = settings.customModelId; document.getElementById("customModelStatus").style.display = "block"; }' +
 'if (settings.systemInstruction) document.getElementById("systemInstruction").value = settings.systemInstruction;' +
 'document.getElementById("includeTimeContext").checked = settings.includeTimeContext !== false;' +
 'document.getElementById("includeLocationContext").checked = settings.includeLocationContext === true;' +
@@ -109,11 +119,42 @@ module.exports = '<!DOCTYPE html>' +
 'if (settings.maxOutputTokens) document.getElementById("maxOutputTokens").value = settings.maxOutputTokens;' +
 'if (settings.memoryDepth) document.getElementById("memoryDepth").value = settings.memoryDepth;' +
 'if (settings.timeoutSeconds) document.getElementById("timeoutSeconds").value = settings.timeoutSeconds;' +
+'document.getElementById("endpointProfile").value = settings.endpointProfile || "openrouter";' +
+'document.getElementById("customBaseUrl").value = settings.customBaseUrl || "";' +
+'document.getElementById("customModelId").value = settings.customModelId || "";' +
+'function populateModels(profile) {' +
+'  var select = document.getElementById("model"); var current = settings.model || (profile === "openai" ? "gpt-5.4-mini" : "openai/gpt-5.4-mini"); var options = modelOptions[profile] || [];' +
+'  select.innerHTML = ""; var found = false;' +
+'  for (var i = 0; i < options.length; i++) { var option = document.createElement("option"); option.value = options[i].value; option.text = options[i].label; if (option.value === current) { option.selected = true; found = true; } select.appendChild(option); }' +
+'  if (!found && current) { var legacy = document.createElement("option"); legacy.value = current; legacy.text = "Current saved model: " + current; legacy.selected = true; select.appendChild(legacy); }' +
+'}' +
+'function updateEndpointUI() {' +
+'  var profile = document.getElementById("endpointProfile").value; var custom = profile === "custom";' +
+'  document.getElementById("customBaseUrlRow").className = custom ? "" : "hidden";' +
+'  document.getElementById("recommendedModelRow").className = custom ? "hidden" : "";' +
+'  document.getElementById("openRouterLinks").className = profile === "openrouter" ? "" : "hidden";' +
+'  document.getElementById("customModelLabel").textContent = custom ? "Model ID" : "Custom model id";' +
+'  document.getElementById("customModelId").placeholder = custom ? "Required: model ID for this API" : "Optional: override recommended model";' +
+'  document.getElementById("customModelNote").textContent = custom ? "A model ID is required for a custom endpoint." : "Use this to select a model not listed above.";' +
+'  var info = document.getElementById("providerInfo");' +
+'  if (profile === "openrouter") { info.innerHTML = "<p><strong>Provider:</strong> OpenRouter</p><p><strong>Endpoint:</strong> OpenAI-compatible Chat Completions</p>"; }' +
+'  else if (profile === "openai") { info.innerHTML = "<p><strong>Provider:</strong> OpenAI API</p><p><strong>Endpoint:</strong> Chat Completions</p>"; }' +
+'  else { info.innerHTML = "<p><strong>Provider:</strong> Custom OpenAI-compatible API</p><p><strong>Endpoint:</strong> Full URL entered above</p>"; }' +
+'  if (!custom) populateModels(profile);' +
+'}' +
+'updateEndpointUI();' +
 'function toggleAdvanced() { document.getElementById("advancedSection").classList.toggle("visible"); }' +
 'var apiKeyDeletedFlag = false;' +
-'function deleteApiKey() { if (confirm("Delete your OpenRouter API key and conversation memory?")) { apiKeyDeletedFlag = true; memoryResetFlag = true; document.getElementById("apiKey").value = ""; document.getElementById("apiKeyStatus").style.display = "none"; } }' +
+'function deleteApiKey() { if (confirm("Delete your API key and conversation memory?")) { apiKeyDeletedFlag = true; memoryResetFlag = true; document.getElementById("apiKey").value = ""; document.getElementById("apiKeyStatus").style.display = "none"; } }' +
 'var memoryResetFlag = false; function resetMemory() { memoryResetFlag = true; alert("Memory reset"); }' +
-'function save() { var resetFlag = memoryResetFlag; memoryResetFlag = false; var apiKeyValue = document.getElementById("apiKey").value.trim(); var deleteFlag = apiKeyDeletedFlag && !apiKeyValue; apiKeyDeletedFlag = false; var newSettings = { apiKey: apiKeyValue, apiKeyDeleted: deleteFlag, language: document.getElementById("language").value, model: document.getElementById("model").value, customModelId: document.getElementById("customModelId").value.trim(), systemInstruction: document.getElementById("systemInstruction").value.trim(), includeTimeContext: document.getElementById("includeTimeContext").checked, includeLocationContext: document.getElementById("includeLocationContext").checked, includeHealthContext: document.getElementById("includeHealthContext").checked, maxOutputTokens: document.getElementById("maxOutputTokens").value, memoryDepth: document.getElementById("memoryDepth").value, timeoutSeconds: document.getElementById("timeoutSeconds").value, memoryReset: resetFlag }; window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(newSettings)); }' +
+'function save() {' +
+'  var profile = document.getElementById("endpointProfile").value; var customBaseUrl = document.getElementById("customBaseUrl").value.trim(); var customModelId = document.getElementById("customModelId").value.trim();' +
+'  if (profile === "custom" && customBaseUrl.indexOf("https://") !== 0) { alert("Enter a complete HTTPS Chat Completions URL."); return; }' +
+'  if (profile === "custom" && !customModelId) { alert("Enter a model ID for the custom endpoint."); return; }' +
+'  var resetFlag = memoryResetFlag; memoryResetFlag = false; var apiKeyValue = document.getElementById("apiKey").value.trim(); var deleteFlag = apiKeyDeletedFlag && !apiKeyValue; apiKeyDeletedFlag = false;' +
+'  var newSettings = { apiKey: apiKeyValue, apiKeyDeleted: deleteFlag, endpointProfile: profile, customBaseUrl: customBaseUrl, language: document.getElementById("language").value, model: profile === "custom" ? "" : document.getElementById("model").value, customModelId: customModelId, systemInstruction: document.getElementById("systemInstruction").value.trim(), includeTimeContext: document.getElementById("includeTimeContext").checked, includeLocationContext: document.getElementById("includeLocationContext").checked, includeHealthContext: document.getElementById("includeHealthContext").checked, maxOutputTokens: document.getElementById("maxOutputTokens").value, memoryDepth: document.getElementById("memoryDepth").value, timeoutSeconds: document.getElementById("timeoutSeconds").value, memoryReset: resetFlag };' +
+'  window.location.href = "pebblejs://close#" + encodeURIComponent(JSON.stringify(newSettings));' +
+'}' +
 '<\/script>' +
 '</body>' +
 '</html>';
