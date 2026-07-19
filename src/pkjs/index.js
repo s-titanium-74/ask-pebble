@@ -154,6 +154,8 @@ function callModel(requestId, utterance, settings, contextText, includeToolInstr
 
   currentRequest = openrouter.request({
     apiKey: settings.apiKey,
+    endpointProfile: settings.endpointProfile,
+    baseUrl: config.getBaseUrl(settings),
     model: config.getModel(),
     messages: messages,
     maxTokens: parseInt(settings.maxOutputTokens) || 300,
