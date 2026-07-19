@@ -1,4 +1,15 @@
-# Ask Pebble MVP UI / Functional Specification
+# Ask Pebble MVP UI / Functional Specification (Historical MVP Record)
+
+> **Current implementation:** Ask Pebble supports OpenRouter, OpenAI API, and
+> custom OpenAI-compatible Chat Completions endpoints. The default models are
+> `openai/gpt-5.4-mini` for OpenRouter and `gpt-5.4-mini` for OpenAI API. An
+> endpoint or custom URL change requires a newly entered API key; keys are never
+> sent to the watchapp or configuration-page URL. The source files under
+> `src/pkjs/` are authoritative for current behavior.
+
+> **Historical scope:** The remaining sections preserve the original
+> OpenRouter-only MVP decisions and model shortlist; they are not a statement of
+> the current provider or settings UI.
 
 This document captures the decided MVP UI and functional behavior for the Ask Pebble PoC.
 

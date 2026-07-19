@@ -1,4 +1,12 @@
-# Ask Pebble Time 2 BYOK AI Voice Q&A PoC 要件定義・実現可能性調査
+# Ask Pebble Time 2 BYOK AI Voice Q&A PoC 要件定義・実現可能性調査（初期調査記録）
+
+> **現行実装:** OpenRouter、OpenAI API、Custom OpenAI-compatible Chat
+> Completions endpoint を選択できる。endpoint または Custom URL を変更する場合は
+> 新しい API key の入力が必要で、key は watchapp と設定ページ URL に送られない。
+> 現行挙動は `src/pkjs/` と `README.md` を参照すること。
+
+> **この文書の扱い:** 以下は OpenRouter 固定だった初期 PoC の要件定義・調査記録で
+> あり、provider、推奨モデル、設定画面の記述は現行仕様を表さない。
 
 ## 1. 背景と目的
 
