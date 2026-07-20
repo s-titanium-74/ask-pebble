@@ -82,6 +82,12 @@ Initial experimental public release.
 - Optional time, location, and health context
 - API key deletion and memory reset controls
 
+## Suggested Changelog For v1.0.2
+
+- Fix Android Settings failing to open when the bundled configuration page
+  contains a character that cannot be encoded by `btoa()`.
+- Keep the configuration page phone-local and reduce its generated URL size.
+
 ## Pre-Publish Checklist
 
 - App name is consistently `Ask Pebble`.
